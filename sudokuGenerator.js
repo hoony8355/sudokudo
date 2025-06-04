@@ -1,27 +1,12 @@
 function isValid(board, row, col, num) {
   for (let x = 0; x < 9; x++) {
-    if (board[row][x] === num || board[x][col] === num ||
-        board[3 * Math.floor(row / 3) + Math.floor(x / 3)]
-             [3 * Math.floor(col / 3) + (x % 3)] === num) {
+    if (
+      board[row][x] === num ||
+      board[x][col] === num ||
+      board[3 * Math.floor(row / 3) + Math.floor(x / 3)]
+           [3 * Math.floor(col / 3) + (x % 3)] === num
+    ) {
       return false;
-    }
-  }
-  return true;
-}
-
-function solve(board) {
-  for (let row = 0; row < 9; row++) {
-    for (let col = 0; col < 9; col++) {
-      if (board[row][col] === 0) {
-        for (let num = 1; num <= 9; num++) {
-          if (isValid(board, row, col, num)) {
-            board[row][col] = num;
-            if (solve(board)) return true;
-            board[row][col] = 0;
-          }
-        }
-        return false;
-      }
     }
   }
   return true;
@@ -67,6 +52,44 @@ function removeCells(board, count = 50) {
 
 export function generateEasySudoku() {
   const board = generateCompleteBoard();
-  const puzzle = removeCells(board, 50); // Easy 난이도 기준
+  const puzzle = removeCells(board, 50); // 약 31개의 힌트를 남김 (easy level)
   return { puzzle, answer: board };
+}
+
+export function showWaitingRoomUI(containerId = "waiting-room") {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    const div = document.createElement("div");
+    div.id = containerId;
+    div.style.position = "absolute";
+    div.style.top = "0";
+    div.style.left = "0";
+    div.style.width = "100%";
+    div.style.height = "100%";
+    div.style.background = "rgba(0,0,0,0.6)";
+    div.style.display = "flex";
+    div.style.justifyContent = "center";
+    div.style.alignItems = "center";
+    div.style.zIndex = "1000";
+    div.style.color = "white";
+    div.style.fontSize = "1.5rem";
+    div.innerHTML = `<div>상대방을 기다리는 중...<br><span id="player-count">1/2</span></div>`;
+    document.body.appendChild(div);
+  } else {
+    container.style.display = "flex";
+  }
+}
+
+export function updatePlayerCount(count) {
+  const countSpan = document.getElementById("player-count");
+  if (countSpan) {
+    countSpan.textContent = `${count}/2`;
+  }
+}
+
+export function hideWaitingRoomUI(containerId = "waiting-room") {
+  const container = document.getElementById(containerId);
+  if (container) {
+    container.style.display = "none";
+  }
 }
