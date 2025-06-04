@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sudoku Domination</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f3f3f3;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+    }
+    header {
+      width: 100%;
+      background-color: #444;
+      color: #fff;
+      padding: 1rem;
+      text-align: center;
+    }
+    #scoreboard {
+      margin-top: 1rem;
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      max-width: 500px;
+    }
+    .score {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      grid-template-rows: repeat(9, 1fr);
+      gap: 2px;
+      margin: 2rem 0;
+      width: 90vmin;
+      height: 90vmin;
+    }
+    .cell {
+      width: 100%;
+      height: 100%;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 1.5rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+    .claimedA {
+      background-color: #b3d9ff;
+    }
+    .claimedB {
+      background-color: #ffcccc;
+    }
+    #number-input {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .num-btn {
+      padding: 0.5rem 1rem;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>스도쿠 점령전</h1>
+  </header>
+
+  <div id="scoreboard">
+    <div class="score" id="scoreA">나: 0칸</div>
+  </div>
+
+  <div id="board"></div>
+
+  <div id="number-input">
+    <button class="num-btn">1</button>
+    <button class="num-btn">2</button>
+    <button class="num-btn">3</button>
+    <button class="num-btn">4</button>
+    <button class="num-btn">5</button>
+    <button class="num-btn">6</button>
+    <button class="num-btn">7</button>
+    <button class="num-btn">8</button>
+    <button class="num-btn">9</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCbgziR_rX4O9OkDBsJxTzNO3q486C_eH4",
+      authDomain: "sudokudo-58475.firebaseapp.com",
+      projectId: "sudokudo-58475",
+      storageBucket: "sudokudo-58475.firebasestorage.app",
+      messagingSenderId: "759625494323",
+      appId: "1:759625494323:web:b9923311c2694e3f5d9846",
+      databaseURL: "https://sudokudo-58475-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const boardEl = document.getElementById("board");
+    const numButtons = document.querySelectorAll(".num-btn");
+    const scoreEl = document.getElementById("scoreA");
+
+    let selectedNumber = null;
+    let score = 0;
+    const roomId = "test-room"; // 혼자 테스트용
+    const playerId = "tester";
+
+    // 테스트용 정답 보드: 모두 5가 정답
+    const correctAnswer = 5;
+
+    const boardRef = ref(db, `rooms/${roomId}/board`);
+    const claimedRef = ref(db, `rooms/${roomId}/board/claimed`);
+
+    // 보드 초기화 (클라이언트에만 랜더링)
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+        cell.id = `cell-${r}-${c}`;
+        cell.addEventListener("click", () => handleCellClick(r, c));
+        boardEl.appendChild(cell);
+      }
+    }
+
+    numButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        selectedNumber = parseInt(btn.textContent);
+        console.log("선택한 숫자:", selectedNumber);
+      });
+    });
+
+    function handleCellClick(row, col) {
+      if (!selectedNumber) return;
+      const key = `${row}-${col}`;
+
+      set(ref(db, `rooms/${roomId}/board/claimed/${key}`), {
+        uid: playerId,
+        number: selectedNumber
+      }).then(() => {
+        console.log(`입력 완료: ${key} → ${selectedNumber}`);
+      }).catch(err => {
+        console.error("입력 실패:", err);
+      });
+    }
+
+    onValue(claimedRef, (snapshot) => {
+      const claimed = snapshot.val() || {};
+      for (const key in claimed) {
+        const [row, col] = key.split("-");
+        const cellEl = document.getElementById(`cell-${row}-${col}`);
+        const data = claimed[key];
+        cellEl.textContent = data.number;
+        cellEl.classList.add("claimedA");
+      }
+      score = Object.values(claimed).filter(c => c.uid === playerId).length;
+      scoreEl.textContent = `나: ${score}칸`;
+      console.log("현재 점령 상태:", claimed);
+    });
+  </script>
+</body>
+</html>
