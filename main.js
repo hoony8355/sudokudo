@@ -1,6 +1,6 @@
-// main1.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
 import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { generateEasySudoku } from './sudokuGenerator.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCbgziR_rX4O9OkDBsJxTzNO3q486C_eH4",
@@ -30,33 +30,6 @@ let correctCount = 0;
 const roomId = "test-room";
 const playerId = "tester";
 
-function generateSudoku(difficulty) {
-  const emptyCells = difficulty === "easy" ? 9 : difficulty === "medium" ? 30 : 45;
-  const basePuzzle = [
-    [5,3,4,6,7,8,9,1,2],
-    [6,7,2,1,9,5,3,4,8],
-    [1,9,8,3,4,2,5,6,7],
-    [8,5,9,7,6,1,4,2,3],
-    [4,2,6,8,5,3,7,9,1],
-    [7,1,3,9,2,4,8,5,6],
-    [9,6,1,5,3,7,2,8,4],
-    [2,8,7,4,1,9,6,3,5],
-    [3,4,5,2,8,6,1,7,9]
-  ];
-
-  const puzzle = basePuzzle.map(row => [...row]);
-  let removed = 0;
-  while (removed < emptyCells) {
-    const r = Math.floor(Math.random() * 9);
-    const c = Math.floor(Math.random() * 9);
-    if (puzzle[r][c] !== 0) {
-      puzzle[r][c] = 0;
-      removed++;
-    }
-  }
-  return [puzzle, basePuzzle];
-}
-
 let puzzle = [];
 let answerBoard = [];
 
@@ -67,7 +40,9 @@ startBtn.addEventListener("click", () => {
 
 difficultyBtn.addEventListener("click", () => {
   const selected = document.getElementById("difficulty").value;
-  [puzzle, answerBoard] = generateSudoku(selected);
+  const generated = generateEasySudoku(); // 현재는 난이도에 관계없이 easy
+  puzzle = generated.puzzle;
+  answerBoard = generated.answer;
   difficultySelect.style.display = "none";
   scoreBoard.style.display = "flex";
   numberInput.style.display = "flex";
@@ -116,8 +91,9 @@ numButtons.forEach(btn => {
       correctCount++;
       if (correctCount >= 9) {
         correctCount = 0;
-        const selected = document.getElementById("difficulty").value;
-        [puzzle, answerBoard] = generateSudoku(selected);
+        const generated = generateEasySudoku();
+        puzzle = generated.puzzle;
+        answerBoard = generated.answer;
         renderBoard();
         remove(ref(db, `rooms/${roomId}/board/claimed`));
       }
@@ -138,8 +114,7 @@ onValue(ref(db, `rooms/${roomId}/board/claimed`), (snapshot) => {
     const data = claimed[key];
     if (cellEl) {
       cellEl.textContent = data.number;
-      cellEl.classList.remove("selected-cell");
-      cellEl.classList.add(data.uid === playerId ? "claimedA" : "claimedB");
+      cellEl.classList.add("claimedA");
     }
   }
   score = Object.values(claimed).filter(c => c.uid === playerId).length;
