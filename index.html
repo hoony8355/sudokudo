@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sudoku Domination</title>
+  <title>스도쿠 점령전</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -26,52 +26,62 @@
     #scoreboard {
       margin-top: 1rem;
       display: flex;
-      justify-content: space-around;
+      justify-content: center;
       width: 100%;
-      max-width: 500px;
     }
     .score {
-      font-size: 1.2rem;
+      font-size: 1rem;
       font-weight: bold;
     }
     #board {
       display: grid;
       grid-template-columns: repeat(9, 1fr);
       grid-template-rows: repeat(9, 1fr);
-      gap: 2px;
-      margin: 2rem 0;
+      gap: 1px;
+      margin: 1rem auto;
       width: 90vmin;
       height: 90vmin;
     }
     .cell {
-      width: 100%;
-      height: 100%;
       background-color: #fff;
       border: 1px solid #ccc;
-      text-align: center;
-      vertical-align: middle;
-      font-size: 1.5rem;
+      font-size: 1.2rem;
       font-weight: bold;
-      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       user-select: none;
+      cursor: pointer;
+    }
+    .prefilled {
+      background-color: #eee;
+      color: #333;
+      cursor: default;
     }
     .claimedA {
       background-color: #b3d9ff;
     }
-    .claimedB {
-      background-color: #ffcccc;
+    .selected-cell {
+      outline: 3px solid #333;
     }
     #number-input {
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
       gap: 0.5rem;
+      margin-bottom: 1rem;
     }
     .num-btn {
       padding: 0.5rem 1rem;
-      font-size: 1.2rem;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 20vw;
+      max-width: 60px;
+    }
+    #start-button {
+      padding: 0.8rem 1.2rem;
+      font-size: 1rem;
+      margin-top: 1rem;
       cursor: pointer;
     }
   </style>
@@ -81,13 +91,15 @@
     <h1>스도쿠 점령전</h1>
   </header>
 
-  <div id="scoreboard">
+  <button id="start-button">게임 시작</button>
+
+  <div id="scoreboard" style="display: none;">
     <div class="score" id="scoreA">나: 0칸</div>
   </div>
 
   <div id="board"></div>
 
-  <div id="number-input">
+  <div id="number-input" style="display: none;">
     <button class="num-btn">1</button>
     <button class="num-btn">2</button>
     <button class="num-btn">3</button>
@@ -101,7 +113,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCbgziR_rX4O9OkDBsJxTzNO3q486C_eH4",
@@ -116,67 +128,106 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    const startBtn = document.getElementById("start-button");
     const boardEl = document.getElementById("board");
     const numButtons = document.querySelectorAll(".num-btn");
     const scoreEl = document.getElementById("scoreA");
+    const scoreBoard = document.getElementById("scoreboard");
+    const numberInput = document.getElementById("number-input");
 
-    let selectedNumber = null;
+    let selectedCell = null;
     let score = 0;
-    const roomId = "test-room"; // 혼자 테스트용
+    const roomId = "test-room";
     const playerId = "tester";
 
-    // 테스트용 정답 보드: 모두 5가 정답
-    const correctAnswer = 5;
+    const puzzle = [
+      [5, 3, 0, 0, 7, 0, 0, 0, 0],
+      [6, 0, 0, 1, 9, 5, 0, 0, 0],
+      [0, 9, 8, 0, 0, 0, 0, 6, 0],
+      [8, 0, 0, 0, 6, 0, 0, 0, 3],
+      [4, 0, 0, 8, 0, 3, 0, 0, 1],
+      [7, 0, 0, 0, 2, 0, 0, 0, 6],
+      [0, 6, 0, 0, 0, 0, 2, 8, 0],
+      [0, 0, 0, 4, 1, 9, 0, 0, 5],
+      [0, 0, 0, 0, 8, 0, 0, 7, 9]
+    ];
 
-    const boardRef = ref(db, `rooms/${roomId}/board`);
-    const claimedRef = ref(db, `rooms/${roomId}/board/claimed`);
+    const answerBoard = [
+      [5,3,4,6,7,8,9,1,2],
+      [6,7,2,1,9,5,3,4,8],
+      [1,9,8,3,4,2,5,6,7],
+      [8,5,9,7,6,1,4,2,3],
+      [4,2,6,8,5,3,7,9,1],
+      [7,1,3,9,2,4,8,5,6],
+      [9,6,1,5,3,7,2,8,4],
+      [2,8,7,4,1,9,6,3,5],
+      [3,4,5,2,8,6,1,7,9]
+    ];
 
-    // 보드 초기화 (클라이언트에만 랜더링)
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        const cell = document.createElement("div");
-        cell.classList.add("cell");
-        cell.dataset.row = r;
-        cell.dataset.col = c;
-        cell.id = `cell-${r}-${c}`;
-        cell.addEventListener("click", () => handleCellClick(r, c));
-        boardEl.appendChild(cell);
+    startBtn.addEventListener("click", () => {
+      boardEl.innerHTML = "";
+      scoreBoard.style.display = "flex";
+      numberInput.style.display = "flex";
+      startBtn.style.display = "none";
+
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+          cell.id = `cell-${r}-${c}`;
+          if (puzzle[r][c] !== 0) {
+            cell.textContent = puzzle[r][c];
+            cell.classList.add("prefilled");
+          } else {
+            cell.addEventListener("click", () => handleCellSelect(r, c));
+          }
+          boardEl.appendChild(cell);
+        }
       }
+    });
+
+    function handleCellSelect(row, col) {
+      if (selectedCell) selectedCell.classList.remove("selected-cell");
+      selectedCell = document.getElementById(`cell-${row}-${col}`);
+      selectedCell.classList.add("selected-cell");
+      selectedCell.dataset.row = row;
+      selectedCell.dataset.col = col;
     }
 
     numButtons.forEach(btn => {
       btn.addEventListener("click", () => {
-        selectedNumber = parseInt(btn.textContent);
-        console.log("선택한 숫자:", selectedNumber);
+        if (!selectedCell) return;
+        const row = parseInt(selectedCell.dataset.row);
+        const col = parseInt(selectedCell.dataset.col);
+        const selectedNumber = parseInt(btn.textContent);
+
+        if (answerBoard[row][col] === selectedNumber) {
+          set(ref(db, `rooms/${roomId}/board/claimed/${row}-${col}`), {
+            uid: playerId,
+            number: selectedNumber
+          });
+        } else {
+          alert("틀렸습니다! 다시 시도하세요.");
+        }
+
+        selectedCell.classList.remove("selected-cell");
+        selectedCell = null;
       });
     });
 
-    function handleCellClick(row, col) {
-      if (!selectedNumber) return;
-      const key = `${row}-${col}`;
-
-      set(ref(db, `rooms/${roomId}/board/claimed/${key}`), {
-        uid: playerId,
-        number: selectedNumber
-      }).then(() => {
-        console.log(`입력 완료: ${key} → ${selectedNumber}`);
-      }).catch(err => {
-        console.error("입력 실패:", err);
-      });
-    }
-
-    onValue(claimedRef, (snapshot) => {
+    onValue(ref(db, `rooms/${roomId}/board/claimed`), (snapshot) => {
       const claimed = snapshot.val() || {};
       for (const key in claimed) {
         const [row, col] = key.split("-");
         const cellEl = document.getElementById(`cell-${row}-${col}`);
         const data = claimed[key];
-        cellEl.textContent = data.number;
-        cellEl.classList.add("claimedA");
+        if (cellEl) {
+          cellEl.textContent = data.number;
+          cellEl.classList.add("claimedA");
+        }
       }
       score = Object.values(claimed).filter(c => c.uid === playerId).length;
       scoreEl.textContent = `나: ${score}칸`;
-      console.log("현재 점령 상태:", claimed);
     });
   </script>
 </body>
