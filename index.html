@@ -2,192 +2,267 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>스도쿠 점령전</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
+      font-family: Arial, sans-serif;
+      background-color: #f3f3f3;
       margin: 0;
       padding: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      background: #f2f2f2;
+      justify-content: flex-start;
+      height: 100vh;
     }
-    h1 {
-      margin-top: 2vmin;
+    header {
+      width: 100%;
+      background-color: #444;
+      color: #fff;
+      padding: 1rem;
+      text-align: center;
     }
-    #game-start, #difficulty-select, #board, #scoreboard, #numpad {
-      margin-top: 2vmin;
+    #scoreboard {
+      margin-top: 1rem;
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+    .score {
+      font-size: 1rem;
+      font-weight: bold;
     }
     #board {
       display: grid;
       grid-template-columns: repeat(9, 1fr);
+      grid-template-rows: repeat(9, 1fr);
+      gap: 1px;
+      margin: 1rem auto;
       width: 90vmin;
       height: 90vmin;
-      border: 2px solid #000;
-      box-sizing: border-box;
     }
     .cell {
+      background-color: #fff;
       border: 1px solid #ccc;
-      font-size: 3vmin;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: white;
-      box-sizing: border-box;
-    }
-    .fixed {
-      background: #eee;
+      font-size: 1.2rem;
       font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      cursor: pointer;
     }
-    .claimed-blue {
-      background-color: rgba(0, 120, 255, 0.3);
+    .prefilled {
+      background-color: #eee;
+      color: #333;
+      cursor: default;
     }
-    .claimed-red {
-      background-color: rgba(255, 0, 0, 0.3);
+    .claimedA {
+      background-color: #b3d9ff;
+    }
+    .claimedB {
+      background-color: #ffcccc;
     }
     .selected-cell {
-      outline: 2px solid #666;
+      outline: 3px solid #333;
     }
-    #numpad {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1vmin;
-      width: 90vmin;
+    #number-input {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
     }
-    .num-button {
-      padding: 4vmin;
-      font-size: 4vmin;
-      background: #fff;
-      border: 1px solid #aaa;
-      border-radius: 0.5vmin;
+    .num-btn {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 20vw;
+      max-width: 60px;
     }
-    #scoreboard {
-      font-size: 3vmin;
-    }
-    button {
-      font-size: 4vmin;
-      padding: 1vmin 3vmin;
-      margin: 2vmin;
+    #start-button, #difficulty-button {
+      padding: 0.8rem 1.2rem;
+      font-size: 1rem;
+      margin-top: 1rem;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>스도쿠 점령전</h1>
-  <div id="game-start">
-    <button onclick="showDifficulty()">게임 시작</button>
+  <header>
+    <h1>스도쿠 점령전</h1>
+  </header>
+  <button id="start-button">게임 시작</button>
+  <div id="difficulty-select" style="display:none; margin-top:1rem;">
+    <label for="difficulty">난이도 선택: </label>
+    <select id="difficulty">
+      <option value="easy">초급</option>
+      <option value="medium">중급</option>
+      <option value="hard">고급</option>
+    </select>
+    <button id="difficulty-button">시작하기</button>
   </div>
-
-  <div id="difficulty-select" style="display:none">
-    <button onclick="startGame('easy')">초급</button>
-    <button onclick="startGame('medium')">중급</button>
-    <button onclick="startGame('hard')">고급</button>
+  <div id="scoreboard" style="display: none;">
+    <div class="score" id="scoreA">나: 0칸</div>
   </div>
-
-  <div id="scoreboard" style="display:none">점령한 칸: <span id="score">0</span>/81</div>
   <div id="board"></div>
-  <div id="numpad" style="display:none"></div>
+  <div id="number-input" style="display: none;">
+    <button class="num-btn">1</button>
+    <button class="num-btn">2</button>
+    <button class="num-btn">3</button>
+    <button class="num-btn">4</button>
+    <button class="num-btn">5</button>
+    <button class="num-btn">6</button>
+    <button class="num-btn">7</button>
+    <button class="num-btn">8</button>
+    <button class="num-btn">9</button>
+  </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 
-  <script src="https://cdn.jsdelivr.net/npm/sudoku@1.0.3/sudoku.min.js"></script>
-  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCbgziR_rX4O9OkDBsJxTzNO3q486C_eH4",
+      authDomain: "sudokudo-58475.firebaseapp.com",
+      projectId: "sudokudo-58475",
+      storageBucket: "sudokudo-58475.firebasestorage.app",
+      messagingSenderId: "759625494323",
+      appId: "1:759625494323:web:b9923311c2694e3f5d9846",
+      databaseURL: "https://sudokudo-58475-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const startBtn = document.getElementById("start-button");
+    const difficultySelect = document.getElementById("difficulty-select");
+    const difficultyBtn = document.getElementById("difficulty-button");
+    const boardEl = document.getElementById("board");
+    const numButtons = document.querySelectorAll(".num-btn");
+    const scoreEl = document.getElementById("scoreA");
+    const scoreBoard = document.getElementById("scoreboard");
+    const numberInput = document.getElementById("number-input");
+
     let selectedCell = null;
-    let puzzle = [];
-    let answer = [];
+    let score = 0;
     let correctCount = 0;
-    let claimed = {};
-    let myUid = "tester";  // 테스트용
-    let myColor = "blue";
-    let currentDifficulty = "easy";
+    const roomId = "test-room";
+    const playerId = "tester";
 
-    function showDifficulty() {
-      document.getElementById("game-start").style.display = "none";
-      document.getElementById("difficulty-select").style.display = "block";
-    }
+    const puzzles = {
+      easy: [
+        [5,3,0,0,7,0,0,0,0],
+        [6,0,0,1,9,5,0,0,0],
+        [0,9,8,0,0,0,0,6,0],
+        [8,0,0,0,6,0,0,0,3],
+        [4,0,0,8,0,3,0,0,1],
+        [7,0,0,0,2,0,0,0,6],
+        [0,6,0,0,0,0,2,8,0],
+        [0,0,0,4,1,9,0,0,5],
+        [0,0,0,0,8,0,0,7,9]
+      ]
+    };
+    const answers = {
+      easy: [
+        [5,3,4,6,7,8,9,1,2],
+        [6,7,2,1,9,5,3,4,8],
+        [1,9,8,3,4,2,5,6,7],
+        [8,5,9,7,6,1,4,2,3],
+        [4,2,6,8,5,3,7,9,1],
+        [7,1,3,9,2,4,8,5,6],
+        [9,6,1,5,3,7,2,8,4],
+        [2,8,7,4,1,9,6,3,5],
+        [3,4,5,2,8,6,1,7,9]
+      ]
+    };
 
-    function startGame(difficulty) {
-      currentDifficulty = difficulty;
-      const raw = sudoku.generate(difficulty);
-      const solved = sudoku.solve(raw);
-      puzzle = raw.split('').map(c => c === '.' ? 0 : parseInt(c));
-      answer = solved.split('').map(c => parseInt(c));
+    let puzzle = [];
+    let answerBoard = [];
+
+    startBtn.addEventListener("click", () => {
+      startBtn.style.display = "none";
+      difficultySelect.style.display = "block";
+    });
+
+    difficultyBtn.addEventListener("click", () => {
+      const selected = document.getElementById("difficulty").value;
+      puzzle = JSON.parse(JSON.stringify(puzzles[selected]));
+      answerBoard = JSON.parse(JSON.stringify(answers[selected]));
+      difficultySelect.style.display = "none";
+      scoreBoard.style.display = "flex";
+      numberInput.style.display = "flex";
       renderBoard();
-      document.getElementById("difficulty-select").style.display = "none";
-      document.getElementById("scoreboard").style.display = "block";
-      document.getElementById("numpad").style.display = "grid";
-    }
+      remove(ref(db, `rooms/${roomId}/board/claimed`));
+    });
 
     function renderBoard() {
-      const board = document.getElementById("board");
-      board.innerHTML = "";
-      for (let i = 0; i < 81; i++) {
-        const cell = document.createElement("div");
-        cell.className = "cell";
-        const value = puzzle[i];
-        const row = Math.floor(i / 9);
-        const col = i % 9;
-        cell.dataset.index = i;
-        if (value !== 0) {
-          cell.textContent = value;
-          cell.classList.add("fixed");
+      boardEl.innerHTML = "";
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+          cell.id = `cell-${r}-${c}`;
+          if (puzzle[r][c] !== 0) {
+            cell.textContent = puzzle[r][c];
+            cell.classList.add("prefilled");
+          } else {
+            cell.addEventListener("click", () => handleCellSelect(r, c));
+          }
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function handleCellSelect(row, col) {
+      if (selectedCell) selectedCell.classList.remove("selected-cell");
+      selectedCell = document.getElementById(`cell-${row}-${col}`);
+      selectedCell.classList.add("selected-cell");
+      selectedCell.dataset.row = row;
+      selectedCell.dataset.col = col;
+    }
+
+    numButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (!selectedCell) return;
+        const row = parseInt(selectedCell.dataset.row);
+        const col = parseInt(selectedCell.dataset.col);
+        const selectedNumber = parseInt(btn.textContent);
+
+        if (answerBoard[row][col] === selectedNumber) {
+          set(ref(db, `rooms/${roomId}/board/claimed/${row}-${col}`), {
+            uid: playerId,
+            number: selectedNumber
+          });
+          correctCount++;
+          if (correctCount >= 9) {
+            correctCount = 0;
+            renderBoard();
+            remove(ref(db, `rooms/${roomId}/board/claimed`));
+          }
         } else {
-          cell.onclick = () => selectCell(i);
+          alert("틀렸습니다! 다시 시도하세요.");
         }
-        board.appendChild(cell);
-      }
 
-      // 렌더 넘버패드
-      const numpad = document.getElementById("numpad");
-      numpad.innerHTML = "";
-      for (let n = 1; n <= 9; n++) {
-        const btn = document.createElement("div");
-        btn.textContent = n;
-        btn.className = "num-button";
-        btn.onclick = () => fillNumber(n);
-        numpad.appendChild(btn);
-      }
-    }
+        selectedCell.classList.remove("selected-cell");
+        selectedCell = null;
+      });
+    });
 
-    function selectCell(index) {
-      const board = document.getElementById("board").children;
-      if (selectedCell !== null) {
-        board[selectedCell].classList.remove("selected-cell");
-      }
-      selectedCell = index;
-      board[selectedCell].classList.add("selected-cell");
-    }
-
-    function fillNumber(num) {
-      if (selectedCell === null || puzzle[selectedCell] !== 0) return;
-
-      const correct = answer[selectedCell] === num;
-      const board = document.getElementById("board").children[selectedCell];
-
-      if (correct) {
-        board.textContent = num;
-        board.classList.add(`claimed-${myColor}`);
-        board.onclick = null;
-        puzzle[selectedCell] = num;
-        correctCount++;
-        updateScore();
-        console.log(`정답! ${selectedCell} → ${num} (${correctCount})`);
-
-        if (correctCount >= 9) {
-          console.log("🌀 다음 퍼즐로 교체합니다.");
-          correctCount = 0;
-          startGame(currentDifficulty);  // 유지된 난이도로 새 퍼즐
+    onValue(ref(db, `rooms/${roomId}/board/claimed`), (snapshot) => {
+      const claimed = snapshot.val() || {};
+      for (const key in claimed) {
+        const [row, col] = key.split("-");
+        const cellEl = document.getElementById(`cell-${row}-${col}`);
+        const data = claimed[key];
+        if (cellEl) {
+          cellEl.textContent = data.number;
+          cellEl.classList.add(data.uid === playerId ? "claimedA" : "claimedB");
         }
-      } else {
-        console.log("❌ 오답입니다.");
       }
-
-      selectedCell = null;
-    }
-
-    function updateScore() {
-      document.getElementById("score").textContent =
-        puzzle.filter(n => n !== 0).length;
-    }
+      score = Object.values(claimed).filter(c => c.uid === playerId).length;
+      scoreEl.textContent = `나: ${score}칸`;
+    });
   </script>
 </body>
 </html>
