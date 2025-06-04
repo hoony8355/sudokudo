@@ -50,6 +50,7 @@ header {
   justify-content: center;
   user-select: none;
   cursor: pointer;
+  transition: background-color 0.3s;
 }
 
 .prefilled {
@@ -60,10 +61,12 @@ header {
 
 .claimedA {
   background-color: #b3d9ff;
+  color: #000;
 }
 
 .claimedB {
-  background-color: #ffcccc;
+  background-color: #ffd6d6;
+  color: #000;
 }
 
 .selected-cell {
@@ -86,7 +89,8 @@ header {
   max-width: 60px;
 }
 
-#start-button, #difficulty-button {
+#start-button,
+#difficulty-button {
   padding: 0.8rem 1.2rem;
   font-size: 1rem;
   margin-top: 1rem;
