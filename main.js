@@ -1,3 +1,4 @@
+// main.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
 import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 
@@ -29,22 +30,9 @@ let correctCount = 0;
 const roomId = "test-room";
 const playerId = "tester";
 
-const puzzles = {
-  easy: [
-    [5,3,0,0,7,0,0,0,0],
-    [6,0,0,1,9,5,0,0,0],
-    [0,9,8,0,0,0,0,6,0],
-    [8,0,0,0,6,0,0,0,3],
-    [4,0,0,8,0,3,0,0,1],
-    [7,0,0,0,2,0,0,0,6],
-    [0,6,0,0,0,0,2,8,0],
-    [0,0,0,4,1,9,0,0,5],
-    [0,0,0,0,8,0,0,7,9]
-  ]
-};
-
-const answers = {
-  easy: [
+function generateSudoku(difficulty) {
+  const emptyCells = difficulty === "easy" ? 9 : difficulty === "medium" ? 30 : 45;
+  const basePuzzle = [
     [5,3,4,6,7,8,9,1,2],
     [6,7,2,1,9,5,3,4,8],
     [1,9,8,3,4,2,5,6,7],
@@ -54,8 +42,20 @@ const answers = {
     [9,6,1,5,3,7,2,8,4],
     [2,8,7,4,1,9,6,3,5],
     [3,4,5,2,8,6,1,7,9]
-  ]
-};
+  ];
+
+  const puzzle = basePuzzle.map(row => [...row]);
+  let removed = 0;
+  while (removed < emptyCells) {
+    const r = Math.floor(Math.random() * 9);
+    const c = Math.floor(Math.random() * 9);
+    if (puzzle[r][c] !== 0) {
+      puzzle[r][c] = 0;
+      removed++;
+    }
+  }
+  return [puzzle, basePuzzle];
+}
 
 let puzzle = [];
 let answerBoard = [];
@@ -67,8 +67,7 @@ startBtn.addEventListener("click", () => {
 
 difficultyBtn.addEventListener("click", () => {
   const selected = document.getElementById("difficulty").value;
-  puzzle = JSON.parse(JSON.stringify(puzzles[selected]));
-  answerBoard = JSON.parse(JSON.stringify(answers[selected]));
+  [puzzle, answerBoard] = generateSudoku(selected);
   difficultySelect.style.display = "none";
   scoreBoard.style.display = "flex";
   numberInput.style.display = "flex";
@@ -117,6 +116,8 @@ numButtons.forEach(btn => {
       correctCount++;
       if (correctCount >= 9) {
         correctCount = 0;
+        const selected = document.getElementById("difficulty").value;
+        [puzzle, answerBoard] = generateSudoku(selected);
         renderBoard();
         remove(ref(db, `rooms/${roomId}/board/claimed`));
       }
@@ -137,6 +138,7 @@ onValue(ref(db, `rooms/${roomId}/board/claimed`), (snapshot) => {
     const data = claimed[key];
     if (cellEl) {
       cellEl.textContent = data.number;
+      cellEl.classList.remove("selected-cell");
       cellEl.classList.add(data.uid === playerId ? "claimedA" : "claimedB");
     }
   }
