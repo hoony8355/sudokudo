@@ -4,25 +4,33 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>스도쿠 점령전</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- 대기방 섹션 -->
+  <header>
+    <h1>스도쿠 점령전</h1>
+  </header>
+
+  <!-- ✅ 대기방 화면 -->
   <section id="lobby-section">
-    <h2>대기 중인 방 목록</h2>
-    <ul id="room-list"></ul>
-    <button id="create-room-btn">방 만들기</button>
+    <div id="room-controls">
+      <button id="create-room">방 만들기</button>
+      <div id="room-list-container">
+        <h3>대기 중인 방 목록</h3>
+        <ul id="room-list"></ul>
+      </div>
+    </div>
   </section>
 
-  <!-- 게임 섹션 -->
-  <section id="game-section" style="display:none;">
-    <h2>스도쿠 점령전 - 플레이</h2>
-    <div id="player-label"></div>
+  <!-- ✅ 게임 화면 -->
+  <section id="game-section" style="display: none;">
     <div id="scoreboard">
-      <div id="scoreA">A: 0칸</div>
-      <div id="scoreB">B: 0칸</div>
+      <div class="score" id="scoreA">Player A: 0칸</div>
+      <div class="score" id="scoreB">Player B: 0칸</div>
     </div>
+
     <div id="board"></div>
+
     <div id="number-input">
       <button class="num-btn">1</button>
       <button class="num-btn">2</button>
@@ -34,12 +42,8 @@
       <button class="num-btn">8</button>
       <button class="num-btn">9</button>
     </div>
-    <div>
-      <button id="back-to-lobby-btn">대기방으로 돌아가기</button>
-    </div>
   </section>
 
-  <!-- Firebase & 스크립트 -->
   <script type="module" src="matchmaking.js"></script>
   <script type="module" src="game.js"></script>
 </body>
