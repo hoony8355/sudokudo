@@ -1,78 +1,84 @@
-// matchmaking.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-import { getDatabase, ref, onValue, set, push, remove } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { getDatabase, ref, onValue, push, set, remove } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 
+// Firebase 설정
 const firebaseConfig = {
   apiKey: "AIzaSyCbgziR_rX4O9OkDBsJxTzNO3q486C_eH4",
   authDomain: "sudokudo-58475.firebaseapp.com",
   projectId: "sudokudo-58475",
-  storageBucket: "sudokudo-58475.appspot.com",
+  storageBucket: "sudokudo-58475.firebasestorage.app",
   messagingSenderId: "759625494323",
   appId: "1:759625494323:web:b9923311c2694e3f5d9846",
-  databaseURL: "https://sudokudo-58475-default-rtdb.asia-southeast1.firebasedatabase.app"
+  databaseURL: "https://sudokudo-58475-default-rtdb.asia-southeast1.firebasedatabase.app/"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-const createBtn = document.getElementById("create-room");
-const roomListEl = document.getElementById("room-list");
+const createRoomButton = document.getElementById("create-room-button");
+const availableRoomsDiv = document.getElementById("available-rooms");
+const lobbyContainer = document.getElementById("lobby-container");
+const gameContainer = document.getElementById("game-container");
 
+// 방 번호 랜덤 생성
 function generateRoomId() {
   return Math.floor(10000 + Math.random() * 90000).toString();
 }
 
-function renderAvailableRooms(rooms) {
-  const roomListEl = document.getElementById("room-list");
-  if (!roomListEl) {
-    console.warn("⛔ room-list 요소가 아직 DOM에 없습니다.");
-    return;
+// 방 목록 렌더링
+function renderAvailableRooms(snapshot) {
+  availableRoomsDiv.innerHTML = "<h3>참여 가능한 방 목록</h3>";
+  const rooms = snapshot.val();
+  if (rooms) {
+    Object.entries(rooms).forEach(([roomId, data]) => {
+      if (data.playerCount === 1) {
+        const btn = document.createElement("button");
+        btn.textContent = `방 ${roomId} 입장`;
+        btn.onclick = () => joinRoom(roomId);
+        availableRoomsDiv.appendChild(btn);
+      }
+    });
   }
-  roomListEl.innerHTML = "";
-  Object.keys(rooms).forEach((roomId) => {
-    const li = document.createElement("li");
-    li.textContent = `방 ${roomId}`;
-    li.onclick = () => joinRoom(roomId);
-    roomListEl.appendChild(li);
+}
+
+// 방 생성
+function createRoom() {
+  const roomId = generateRoomId();
+  const roomRef = ref(db, `rooms/${roomId}`);
+  set(roomRef, {
+    playerCount: 1,
+    createdAt: Date.now(),
+    puzzleSeed: Math.random().toString(36).substring(2)
+  }).then(() => {
+    sessionStorage.setItem("roomId", roomId);
+    console.log(`🎲 방 ${roomId} 생성됨`);
+    transitionToGame();
   });
 }
 
+// 방 입장
 function joinRoom(roomId) {
-  const playerId = "player" + Math.floor(Math.random() * 10000);
   const roomRef = ref(db, `rooms/${roomId}`);
-
-  set(ref(db, `rooms/${roomId}/players/${playerId}`), true);
-
-  // 세션에 방 번호와 플레이어 ID 저장
-  sessionStorage.setItem("roomId", roomId);
-  sessionStorage.setItem("playerId", playerId);
-
-  window.location.href = "game.html";
+  set(roomRef, {
+    playerCount: 2,
+    joinedAt: Date.now()
+  }).then(() => {
+    sessionStorage.setItem("roomId", roomId);
+    console.log(`🚪 방 ${roomId} 입장 완료`);
+    transitionToGame();
+  });
 }
 
-function createRoom() {
-  const newRoomId = generateRoomId();
-  const playerId = "player" + Math.floor(Math.random() * 10000);
-  const roomRef = ref(db, `rooms/${newRoomId}`);
-
-  set(ref(db, `rooms/${newRoomId}/players/${playerId}`), true);
-  set(ref(db, `rooms/${newRoomId}/status`), "waiting");
-
-  sessionStorage.setItem("roomId", newRoomId);
-  sessionStorage.setItem("playerId", playerId);
-
-  window.location.href = "game.html";
+function transitionToGame() {
+  lobbyContainer.style.display = "none";
+  gameContainer.style.display = "block";
+  import("./game.js").then(module => {
+    module.startGame();
+  });
 }
 
-createBtn.addEventListener("click", createRoom);
+// 초기 방 목록 로딩
+onValue(ref(db, "rooms"), renderAvailableRooms);
 
-onValue(ref(db, "rooms"), (snapshot) => {
-  const rooms = snapshot.val() || {};
-  const filtered = {};
-  for (const id in rooms) {
-    if (rooms[id].status === "waiting") {
-      filtered[id] = rooms[id];
-    }
-  }
-  renderAvailableRooms(filtered);
-});
+// 버튼 이벤트 연결
+createRoomButton.addEventListener("click", createRoom);
