@@ -50,7 +50,7 @@ function removeCells(board, count = 50) {
   return puzzle;
 }
 
-export function generateEasySudoku() {
+export function generateSudoku() {
   const board = generateCompleteBoard();
   const puzzle = removeCells(board, 50); // 약 31개의 힌트를 남김 (easy level)
   return { puzzle, answer: board };
