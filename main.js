@@ -1,77 +1,85 @@
 // main.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-import { getDatabase, ref, onValue, set, get, child, push, remove } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { db } from './firebase-init.js';
+import { generateSudokuPuzzle } from './sudokuGenerator.js';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCbgziR_rX4O9OkDBsJxTzNO3q486C_eH4",
-  authDomain: "sudokudo-58475.firebaseapp.com",
-  projectId: "sudokudo-58475",
-  storageBucket: "sudokudo-58475.firebasestorage.app",
-  messagingSenderId: "759625494323",
-  appId: "1:759625494323:web:b9923311c2694e3f5d9846",
-  databaseURL: "https://sudokudo-58475-default-rtdb.asia-southeast1.firebasedatabase.app"
-};
+let board = [];
+let solution = [];
+let playerId = null;
+let roomId = null;
+let selectedCell = null;
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-const lobbyEl = document.getElementById("lobby");
-const roomListEl = document.getElementById("room-list");
-const createRoomBtn = document.getElementById("create-room-btn");
-const waitingRoomEl = document.getElementById("waiting-room");
-const waitingMessageEl = document.getElementById("waiting-message");
-
-let currentRoomId = null;
-let playerId = `player_${Math.floor(Math.random() * 100000)}`;
-
-// 방 리스트 로딩
-function loadRoomList() {
-  onValue(ref(db, "rooms"), (snapshot) => {
-    roomListEl.innerHTML = "";
-    const rooms = snapshot.val() || {};
-    Object.entries(rooms).forEach(([roomId, roomData]) => {
-      const playerCount = roomData.players ? Object.keys(roomData.players).length : 0;
-      if (playerCount < 2) {
-        const btn = document.createElement("button");
-        btn.textContent = `방 번호 ${roomId}`;
-        btn.onclick = () => joinRoom(roomId);
-        roomListEl.appendChild(btn);
-      }
-    });
-  });
-}
-
-// 방 참가
-function joinRoom(roomId) {
-  currentRoomId = roomId;
-  set(ref(db, `rooms/${roomId}/players/${playerId}`), true);
-  lobbyEl.style.display = "none";
-  waitingRoomEl.style.display = "block";
-  checkStartCondition(roomId);
-}
-
-// 방 생성
-function createRoom() {
-  const roomId = Math.floor(10000 + Math.random() * 90000).toString();
-  set(ref(db, `rooms/${roomId}/players/${playerId}`), true);
-  currentRoomId = roomId;
-  lobbyEl.style.display = "none";
-  waitingRoomEl.style.display = "block";
-  checkStartCondition(roomId);
-}
-
-// 두 명 입장 시 시작
-function checkStartCondition(roomId) {
-  onValue(ref(db, `rooms/${roomId}/players`), (snapshot) => {
-    const players = snapshot.val();
-    if (players && Object.keys(players).length === 2) {
-      waitingMessageEl.textContent = "매칭 완료! 게임을 시작합니다...";
-      setTimeout(() => {
-        location.href = `game.html?room=${roomId}&player=${playerId}`;
-      }, 1500);
+function generateEmptyBoard() {
+  const boardElement = document.getElementById('board');
+  boardElement.innerHTML = '';
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.row = row;
+      cell.dataset.col = col;
+      cell.addEventListener('click', () => handleCellClick(cell));
+      boardElement.appendChild(cell);
     }
-  });
+  }
+  console.log('📦 보드 생성 완료');
 }
 
-createRoomBtn.addEventListener("click", createRoom);
-loadRoomList();
+function handleCellClick(cell) {
+  if (cell.classList.contains('fixed')) return;
+  selectedCell = cell;
+  document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+  cell.classList.add('selected');
+  console.log(`🖱️ 셀 선택: (${cell.dataset.row}, ${cell.dataset.col})`);
+}
+
+function handleNumberInput(number) {
+  if (!selectedCell) return;
+  const row = parseInt(selectedCell.dataset.row);
+  const col = parseInt(selectedCell.dataset.col);
+  if (solution[row][col] === number) {
+    selectedCell.textContent = number;
+    selectedCell.classList.add('fixed');
+    selectedCell.classList.add('player-cell');
+    updateBoard(row, col, number);
+    console.log(`✅ 정답 입력: ${number} at (${row}, ${col})`);
+  } else {
+    alert('❌ 오답! -2점');
+  }
+}
+
+function updateBoard(row, col, value) {
+  board[row][col] = value;
+  const updates = {};
+  updates[`/rooms/${roomId}/board/${row}-${col}`] = {
+    value,
+    player: playerId
+  };
+  firebase.database().ref().update(updates);
+  console.log('📡 보드 업데이트 전송');
+}
+
+function renderBoard() {
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
+      const value = board[row][col];
+      const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+      cell.textContent = value ? value : '';
+      if (value !== 0) cell.classList.add('fixed');
+    }
+  }
+  console.log('📦 보드 렌더링 완료');
+}
+
+function startGame(initPlayerId, initRoomId) {
+  playerId = initPlayerId;
+  roomId = initRoomId;
+  const { puzzle, solution: sol } = generateSudokuPuzzle('easy');
+  board = puzzle;
+  solution = sol;
+  generateEmptyBoard();
+  renderBoard();
+  console.log('🎮 게임 시작');
+}
+
+window.handleNumberInput = handleNumberInput;
+window.startGame = startGame;
