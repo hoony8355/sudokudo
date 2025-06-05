@@ -4,48 +4,43 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>스도쿠 점령전</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>스도쿠 점령전</h1>
-  </header>
+  <!-- 대기방 섹션 -->
+  <section id="lobby-section">
+    <h2>대기 중인 방 목록</h2>
+    <ul id="room-list"></ul>
+    <button id="create-room-btn">방 만들기</button>
+  </section>
 
-  <main>
-    <div id="lobby-section">
-      <button id="create-room">방 만들기</button>
-      <div id="room-list">
-        <h2>대기 중인 방</h2>
-        <ul id="available-rooms"></ul>
-      </div>
+  <!-- 게임 섹션 -->
+  <section id="game-section" style="display:none;">
+    <h2>스도쿠 점령전 - 플레이</h2>
+    <div id="player-label"></div>
+    <div id="scoreboard">
+      <div id="scoreA">A: 0칸</div>
+      <div id="scoreB">B: 0칸</div>
     </div>
-
-    <div id="game-section" style="display: none;">
-      <div id="info-bar">
-        <div id="room-code-display">Room: -</div>
-        <div id="player-role-display">Player: -</div>
-        <div id="scoreboard">
-          <span id="scoreA">A: 0칸</span>
-          <span id="scoreB">B: 0칸</span>
-        </div>
-      </div>
-
-      <div id="board"></div>
-
-      <div id="number-input">
-        <button class="num-btn">1</button>
-        <button class="num-btn">2</button>
-        <button class="num-btn">3</button>
-        <button class="num-btn">4</button>
-        <button class="num-btn">5</button>
-        <button class="num-btn">6</button>
-        <button class="num-btn">7</button>
-        <button class="num-btn">8</button>
-        <button class="num-btn">9</button>
-      </div>
+    <div id="board"></div>
+    <div id="number-input">
+      <button class="num-btn">1</button>
+      <button class="num-btn">2</button>
+      <button class="num-btn">3</button>
+      <button class="num-btn">4</button>
+      <button class="num-btn">5</button>
+      <button class="num-btn">6</button>
+      <button class="num-btn">7</button>
+      <button class="num-btn">8</button>
+      <button class="num-btn">9</button>
     </div>
-  </main>
+    <div>
+      <button id="back-to-lobby-btn">대기방으로 돌아가기</button>
+    </div>
+  </section>
 
+  <!-- Firebase & 스크립트 -->
   <script type="module" src="matchmaking.js"></script>
+  <script type="module" src="game.js"></script>
 </body>
 </html>
