@@ -1,133 +1,130 @@
 // game.js
 
-import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
-import { generateSudoku } from './sudoku-generator.js';
+import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { db } from "./firebase-init.js";
+import { generateSudoku } from "./sudokuGenerator.js";
 
-const db = getDatabase();
-const roomId = sessionStorage.getItem('roomId');
-const playerId = `player-${Math.floor(Math.random() * 10000)}`;
+let roomId = sessionStorage.getItem("roomId");
+let player = sessionStorage.getItem("player");
+const boardContainer = document.getElementById("board");
+const gameStatus = document.getElementById("game-status");
 
-const boardEl = document.getElementById("board");
-const numberInput = document.getElementById("number-input");
-const scoreEl = document.getElementById("scoreA");
-
-let selectedCell = null;
-let score = 0;
-let correctCount = 0;
 let puzzle = [];
-let answerBoard = [];
+let boardState = [];
+let score = 0;
+let opponentScore = 0;
+let selectedCell = null;
+let capturedCells = {};
+
+function log(...args) {
+  console.log("[Game]", ...args);
+}
 
 function renderBoard() {
-  boardEl.innerHTML = "";
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
+  boardContainer.innerHTML = "";
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
       const cell = document.createElement("div");
       cell.classList.add("cell");
-      cell.id = `cell-${r}-${c}`;
-      if (puzzle[r][c] !== 0) {
-        cell.textContent = puzzle[r][c];
-        cell.classList.add("prefilled");
-      } else {
-        cell.addEventListener("click", () => handleCellSelect(r, c));
+      cell.dataset.row = row;
+      cell.dataset.col = col;
+
+      const val = boardState[row][col];
+      if (val !== 0) cell.textContent = val;
+      else cell.textContent = "";
+
+      const cellKey = `${row}-${col}`;
+      if (capturedCells[cellKey] === player) {
+        cell.classList.add("captured-by-me");
+      } else if (capturedCells[cellKey]) {
+        cell.classList.add("captured-by-other");
       }
-      boardEl.appendChild(cell);
+
+      cell.addEventListener("click", () => {
+        if (puzzle[row][col] === 0 && !capturedCells[cellKey]) {
+          selectedCell = { row, col };
+          log("Selected cell:", selectedCell);
+        }
+      });
+
+      boardContainer.appendChild(cell);
     }
   }
-  console.log("📦 보드 렌더링 완료");
+  log("📦 보드 렌더링 완료");
 }
 
-function handleCellSelect(row, col) {
-  if (selectedCell) selectedCell.classList.remove("selected-cell");
-  selectedCell = document.getElementById(`cell-${row}-${col}`);
-  selectedCell.classList.add("selected-cell");
-  selectedCell.dataset.row = row;
-  selectedCell.dataset.col = col;
-}
-
-function listenToClaimedCells() {
-  onValue(ref(db, `rooms/${roomId}/board/claimed`), (snapshot) => {
-    const claimed = snapshot.val() || {};
-    for (const key in claimed) {
-      const [row, col] = key.split("-");
-      const cellEl = document.getElementById(`cell-${row}-${col}`);
-      const data = claimed[key];
-      if (cellEl) {
-        cellEl.textContent = data.number;
-        cellEl.classList.add(data.uid === playerId ? "claimedA" : "claimedB");
-      }
+function updateCapturedCellsUI() {
+  for (let cell of document.querySelectorAll(".cell")) {
+    const row = cell.dataset.row;
+    const col = cell.dataset.col;
+    const key = `${row}-${col}`;
+    cell.classList.remove("captured-by-me", "captured-by-other");
+    if (capturedCells[key] === player) {
+      cell.classList.add("captured-by-me");
+    } else if (capturedCells[key]) {
+      cell.classList.add("captured-by-other");
     }
-    score = Object.values(claimed).filter(c => c.uid === playerId).length;
-    scoreEl.textContent = `나: ${score}칸`;
-    console.log("📡 점령 현황 갱신됨", claimed);
-  });
+  }
+  log("📡 점령 현황 UI 갱신");
 }
 
-function setupInput() {
-  document.querySelectorAll(".num-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      if (!selectedCell) return;
-      const row = parseInt(selectedCell.dataset.row);
-      const col = parseInt(selectedCell.dataset.col);
-      const selectedNumber = parseInt(btn.textContent);
-
-      if (answerBoard[row][col] === selectedNumber) {
-        set(ref(db, `rooms/${roomId}/board/claimed/${row}-${col}`), {
-          uid: playerId,
-          number: selectedNumber
-        });
-        correctCount++;
-        if (correctCount >= 9) {
-          correctCount = 0;
-          const { puzzle: newPuzzle, solution: newAnswer } = generateSudoku();
-          puzzle = newPuzzle;
-          answerBoard = newAnswer;
-          renderBoard();
-          remove(ref(db, `rooms/${roomId}/board/claimed`));
-        }
-      } else {
-        alert("틀렸습니다! 다시 시도하세요.");
-      }
-
-      selectedCell.classList.remove("selected-cell");
-      selectedCell = null;
-    });
-  });
+function setupBoard(p) {
+  puzzle = p;
+  boardState = JSON.parse(JSON.stringify(puzzle));
+  capturedCells = {};
+  renderBoard();
 }
 
-function startGame() {
-  const gameDataRef = ref(db, `rooms/${roomId}`);
-  onValue(gameDataRef, (snapshot) => {
+function initGame() {
+  const gameRef = ref(db, `rooms/${roomId}`);
+
+  onValue(gameRef, (snapshot) => {
     const data = snapshot.val();
-    if (data && data.players && Object.keys(data.players).length === 2) {
-      if (!data.board) {
-        // 방장이 퍼즐 생성
-        const { puzzle: newPuzzle, solution: newAnswer } = generateSudoku();
-        set(ref(db, `rooms/${roomId}/board/puzzle`), newPuzzle);
-        set(ref(db, `rooms/${roomId}/board/answer`), newAnswer);
-        console.log("🧩 퍼즐 생성 및 저장 완료");
-      }
+    if (data?.puzzle && puzzle.length === 0) {
+      setupBoard(data.puzzle);
+      log(`✅ ${player}: 퍼즐 불러오기 완료`);
+    }
+
+    if (data?.captures) {
+      capturedCells = data.captures;
+      updateCapturedCellsUI();
+    }
+
+    if (data?.scores) {
+      score = data.scores[player] || 0;
+      opponentScore = data.scores[player === "A" ? "B" : "A"] || 0;
+      gameStatus.textContent = `나: ${score}점 / 상대: ${opponentScore}점`;
     }
   });
 
-  // 퍼즐 불러오기 및 렌더링
-  onValue(ref(db, `rooms/${roomId}/board/puzzle`), (snapshot) => {
-    const value = snapshot.val();
-    if (value) {
-      puzzle = value;
-      console.log("🟢 퍼즐 불러오기 완료");
+  document.addEventListener("keydown", (e) => {
+    if (!selectedCell || isNaN(parseInt(e.key))) return;
+
+    const { row, col } = selectedCell;
+    const answer = parseInt(e.key);
+    const correct = generateSudoku.solution[puzzle.sudokuIndex][row][col];
+    const cellKey = `${row}-${col}`;
+
+    if (answer === correct) {
+      boardState[row][col] = answer;
+      capturedCells[cellKey] = player;
+      score++;
+      update(ref(db, `rooms/${roomId}`), {
+        [`boardState`]: boardState,
+        [`captures`]: capturedCells,
+        [`scores/${player}`]: score,
+      });
       renderBoard();
+    } else {
+      score = Math.max(0, score - 2);
+      update(ref(db, `rooms/${roomId}`), {
+        [`scores/${player}`]: score,
+      });
     }
+    selectedCell = null;
   });
 
-  onValue(ref(db, `rooms/${roomId}/board/answer`), (snapshot) => {
-    const value = snapshot.val();
-    if (value) answerBoard = value;
-  });
-
-  setupInput();
-  listenToClaimedCells();
-  numberInput.style.display = 'flex';
-  console.log("🎮 게임 시작");
+  log("🎮 게임 시작");
 }
 
-startGame();
+window.addEventListener("DOMContentLoaded", initGame);
