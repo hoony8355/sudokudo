@@ -15,67 +15,64 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-const createRoomBtn = document.getElementById("create-room");
-const availableRoomsEl = document.getElementById("available-rooms");
-const lobbySection = document.getElementById("lobby-section");
-const gameSection = document.getElementById("game-section");
-const roomCodeDisplay = document.getElementById("room-code-display");
-const playerRoleDisplay = document.getElementById("player-role-display");
+const createBtn = document.getElementById("create-room");
+const roomListEl = document.getElementById("room-list");
 
-let myPlayer = null;
-let currentRoom = null;
-
-function generateRoomCode() {
+function generateRoomId() {
   return Math.floor(10000 + Math.random() * 90000).toString();
 }
 
-function renderAvailableRooms(snapshot) {
-  availableRoomsEl.innerHTML = "";
-  const rooms = snapshot.val();
-  for (const roomCode in rooms) {
-    const room = rooms[roomCode];
-    if (room.playerCount === 1) {
-      const li = document.createElement("li");
-      li.textContent = `방 번호: ${roomCode}`;
-      li.style.cursor = "pointer";
-      li.onclick = () => joinRoom(roomCode);
-      availableRoomsEl.appendChild(li);
-    }
+function renderAvailableRooms(rooms) {
+  const roomListEl = document.getElementById("room-list");
+  if (!roomListEl) {
+    console.warn("⛔ room-list 요소가 아직 DOM에 없습니다.");
+    return;
   }
+  roomListEl.innerHTML = "";
+  Object.keys(rooms).forEach((roomId) => {
+    const li = document.createElement("li");
+    li.textContent = `방 ${roomId}`;
+    li.onclick = () => joinRoom(roomId);
+    roomListEl.appendChild(li);
+  });
+}
+
+function joinRoom(roomId) {
+  const playerId = "player" + Math.floor(Math.random() * 10000);
+  const roomRef = ref(db, `rooms/${roomId}`);
+
+  set(ref(db, `rooms/${roomId}/players/${playerId}`), true);
+
+  // 세션에 방 번호와 플레이어 ID 저장
+  sessionStorage.setItem("roomId", roomId);
+  sessionStorage.setItem("playerId", playerId);
+
+  window.location.href = "game.html";
 }
 
 function createRoom() {
-  const roomCode = generateRoomCode();
-  const roomRef = ref(db, `rooms/${roomCode}`);
-  set(roomRef, {
-    playerCount: 1,
-    board: {},
-    status: "waiting"
-  });
-  enterRoom(roomCode, "A");
+  const newRoomId = generateRoomId();
+  const playerId = "player" + Math.floor(Math.random() * 10000);
+  const roomRef = ref(db, `rooms/${newRoomId}`);
+
+  set(ref(db, `rooms/${newRoomId}/players/${playerId}`), true);
+  set(ref(db, `rooms/${newRoomId}/status`), "waiting");
+
+  sessionStorage.setItem("roomId", newRoomId);
+  sessionStorage.setItem("playerId", playerId);
+
+  window.location.href = "game.html";
 }
 
-function joinRoom(roomCode) {
-  const roomRef = ref(db, `rooms/${roomCode}`);
-  set(roomRef, {
-    playerCount: 2,
-    status: "ready"
-  });
-  enterRoom(roomCode, "B");
-}
+createBtn.addEventListener("click", createRoom);
 
-function enterRoom(roomCode, player) {
-  myPlayer = player;
-  currentRoom = roomCode;
-  lobbySection.style.display = "none";
-  gameSection.style.display = "block";
-  roomCodeDisplay.textContent = `Room: ${roomCode}`;
-  playerRoleDisplay.textContent = `Player: ${player}`;
-
-  import("./game.js").then(({ startGame }) => {
-    startGame(db, roomCode, player);
-  });
-}
-
-onValue(ref(db, "rooms"), renderAvailableRooms);
-createRoomBtn.addEventListener("click", createRoom);
+onValue(ref(db, "rooms"), (snapshot) => {
+  const rooms = snapshot.val() || {};
+  const filtered = {};
+  for (const id in rooms) {
+    if (rooms[id].status === "waiting") {
+      filtered[id] = rooms[id];
+    }
+  }
+  renderAvailableRooms(filtered);
+});
