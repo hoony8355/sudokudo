@@ -1,84 +1,66 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-import { getDatabase, ref, onValue, push, set, remove } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+// matchmaking.js
+import { getDatabase, ref, onValue, set, push, remove } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { database } from "./firebase-init.js";
 
-// Firebase 설정
-const firebaseConfig = {
-  apiKey: "AIzaSyCbgziR_rX4O9OkDBsJxTzNO3q486C_eH4",
-  authDomain: "sudokudo-58475.firebaseapp.com",
-  projectId: "sudokudo-58475",
-  storageBucket: "sudokudo-58475.firebasestorage.app",
-  messagingSenderId: "759625494323",
-  appId: "1:759625494323:web:b9923311c2694e3f5d9846",
-  databaseURL: "https://sudokudo-58475-default-rtdb.asia-southeast1.firebasedatabase.app/"
-};
+const createRoomBtn = document.getElementById("createRoomBtn");
+const roomListContainer = document.getElementById("roomList");
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-const createRoomButton = document.getElementById("create-room-button");
-const availableRoomsDiv = document.getElementById("available-rooms");
-const lobbyContainer = document.getElementById("lobby-container");
-const gameContainer = document.getElementById("game-container");
-
-// 방 번호 랜덤 생성
 function generateRoomId() {
   return Math.floor(10000 + Math.random() * 90000).toString();
 }
 
-// 방 목록 렌더링
-function renderAvailableRooms(snapshot) {
-  availableRoomsDiv.innerHTML = "<h3>참여 가능한 방 목록</h3>";
-  const rooms = snapshot.val();
-  if (rooms) {
-    Object.entries(rooms).forEach(([roomId, data]) => {
-      if (data.playerCount === 1) {
-        const btn = document.createElement("button");
-        btn.textContent = `방 ${roomId} 입장`;
-        btn.onclick = () => joinRoom(roomId);
-        availableRoomsDiv.appendChild(btn);
-      }
-    });
+function renderAvailableRooms(rooms) {
+  if (!roomListContainer) {
+    console.warn("⚠️ roomListContainer 요소를 찾을 수 없습니다.");
+    return;
   }
+  roomListContainer.innerHTML = "";
+  Object.entries(rooms).forEach(([roomId, room]) => {
+    if (!room.inGame) {
+      const button = document.createElement("button");
+      button.textContent = `방 ${roomId} 입장하기`;
+      button.classList.add("room-button");
+      button.onclick = () => joinRoom(roomId);
+      roomListContainer.appendChild(button);
+    }
+  });
 }
 
-// 방 생성
+function joinRoom(roomId) {
+  const roomRef = ref(database, `rooms/${roomId}`);
+  onValue(roomRef, (snapshot) => {
+    const roomData = snapshot.val();
+    if (roomData && !roomData.playerB) {
+      set(ref(database, `rooms/${roomId}/playerB`), true);
+      set(ref(database, `rooms/${roomId}/inGame`), true);
+      sessionStorage.setItem("roomId", roomId);
+      sessionStorage.setItem("player", "B");
+      location.href = "#game";
+    }
+  }, {
+    onlyOnce: true
+  });
+}
+
 function createRoom() {
   const roomId = generateRoomId();
-  const roomRef = ref(db, `rooms/${roomId}`);
+  const roomRef = ref(database, `rooms/${roomId}`);
   set(roomRef, {
-    playerCount: 1,
-    createdAt: Date.now(),
-    puzzleSeed: Math.random().toString(36).substring(2)
+    playerA: true,
+    inGame: false
   }).then(() => {
     sessionStorage.setItem("roomId", roomId);
-    console.log(`🎲 방 ${roomId} 생성됨`);
-    transitionToGame();
+    sessionStorage.setItem("player", "A");
+    location.href = "#game";
   });
 }
 
-// 방 입장
-function joinRoom(roomId) {
-  const roomRef = ref(db, `rooms/${roomId}`);
-  set(roomRef, {
-    playerCount: 2,
-    joinedAt: Date.now()
-  }).then(() => {
-    sessionStorage.setItem("roomId", roomId);
-    console.log(`🚪 방 ${roomId} 입장 완료`);
-    transitionToGame();
-  });
-}
+createRoomBtn?.addEventListener("click", createRoom);
 
-function transitionToGame() {
-  lobbyContainer.style.display = "none";
-  gameContainer.style.display = "block";
-  import("./game.js").then(module => {
-    module.startGame();
-  });
-}
-
-// 초기 방 목록 로딩
-onValue(ref(db, "rooms"), renderAvailableRooms);
-
-// 버튼 이벤트 연결
-createRoomButton.addEventListener("click", createRoom);
+onValue(ref(database, "rooms"), (snapshot) => {
+  const rooms = snapshot.val();
+  if (rooms) {
+    console.log("📡 현재 대기 중인 방:", rooms);
+    renderAvailableRooms(rooms);
+  }
+});
