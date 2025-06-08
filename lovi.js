@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
 import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 import { startGame } from "./gamp.js";
-import { generateSudoku } from "./sudokuGenerator.js";  // ✅ 퍼즐 생성기 추가
+import { generateSudoku } from "./sudokuGenerator.js";
 
 // Firebase 초기화
 const firebaseConfig = {
@@ -27,7 +27,6 @@ const gameContainer = document.getElementById("game-container");
 const waitingMessage = document.getElementById("waiting-message");
 const countdownEl = document.getElementById("countdown");
 
-// 유저 세션 상태
 let roomId = null;
 let playerRole = null;
 
@@ -35,12 +34,10 @@ function log(...args) {
   console.log("[LOVI]", ...args);
 }
 
-// 방 ID 생성
 function generateRoomId() {
   return Math.floor(10000 + Math.random() * 90000).toString();
 }
 
-// 대기 중인 방 표시
 function renderRooms(rooms) {
   roomList.innerHTML = "";
   Object.entries(rooms).forEach(([id, room]) => {
@@ -53,28 +50,29 @@ function renderRooms(rooms) {
   });
 }
 
-// 방 입장 처리
 function joinRoom(id) {
   const roomRef = ref(db, `rooms/${id}`);
-  onValue(roomRef, snapshot => {
-    const room = snapshot.val();
-    if (room && !room.playerB) {
-      log("🔑 B 플레이어로 입장");
-      playerRole = "B";
-      roomId = id;
-      update(roomRef, { playerB: true, inGame: true });
-      enterGame();
-    }
-  }, { onlyOnce: true });
+  onValue(
+    roomRef,
+    snapshot => {
+      const room = snapshot.val();
+      if (room && !room.playerB) {
+        log("🔑 B 플레이어로 입장");
+        playerRole = "B";
+        roomId = id;
+        update(roomRef, { playerB: true, inGame: true });
+        enterGame();
+      }
+    },
+    { onlyOnce: true }
+  );
 }
 
-// 방 생성
 function createRoom() {
   const id = generateRoomId();
   const roomRef = ref(db, `rooms/${id}`);
-  const { puzzle, answer } = generateSudoku();  // ✅ 퍼즐 생성
-
-  const emptyClaims = Array.from({ length: 9 }, () => Array(9).fill("")); // ✅ 점령 초기화
+  const { puzzle, answer } = generateSudoku();
+  const emptyClaims = Array.from({ length: 9 }, () => Array(9).fill(""));
 
   set(roomRef, {
     playerA: true,
@@ -90,7 +88,6 @@ function createRoom() {
   });
 }
 
-// 상대 기다리기
 function waitForOpponent() {
   lobbyContainer.classList.add("hidden");
   gameContainer.classList.remove("hidden");
@@ -108,7 +105,6 @@ function waitForOpponent() {
   });
 }
 
-// 카운트다운 후 게임 시작
 function startCountdown() {
   let count = 3;
 
@@ -127,14 +123,12 @@ function startCountdown() {
   }, 1000);
 }
 
-// 입장 시 초기 설정
 function enterGame() {
   lobbyContainer.classList.add("hidden");
   gameContainer.classList.remove("hidden");
   waitForOpponent();
 }
 
-// 초기화
 function init() {
   createBtn?.addEventListener("click", createRoom);
   onValue(ref(db, "rooms"), snapshot => {
