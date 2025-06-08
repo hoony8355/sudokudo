@@ -4,6 +4,7 @@ import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebase
 const db = getDatabase();
 
 let puzzle = null;
+let answer = null;
 let claims = null;
 let currentPlayer = null;
 let currentRoomId = null;
@@ -74,8 +75,8 @@ function handleNumberInput(value) {
     return;
   }
 
-  if (!isValidMove(row, col, value)) {
-    log("❌ 잘못된 수", { row, col, value });
+  if (answer && answer[row][col] !== value) {
+    log("❌ 정답 아님", { row, col, value, expected: answer[row][col] });
     return;
   }
 
@@ -100,20 +101,6 @@ function handleNumberInput(value) {
   selectedCell = null;
 }
 
-function isValidMove(row, col, value) {
-  for (let i = 0; i < 9; i++) {
-    if (puzzle[row][i] === value || puzzle[i][col] === value) return false;
-  }
-  const boxRow = Math.floor(row / 3) * 3;
-  const boxCol = Math.floor(col / 3) * 3;
-  for (let i = 0; i < 3; i++) {
-    for (let j = 0; j < 3; j++) {
-      if (puzzle[boxRow + i][boxCol + j] === value) return false;
-    }
-  }
-  return true;
-}
-
 function setupInputListeners() {
   document.querySelectorAll(".num-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -136,11 +123,17 @@ export function startGame(roomId, player) {
 
   const puzzleRef = ref(db, `rooms/${roomId}/puzzle`);
   const claimsRef = ref(db, `rooms/${roomId}/claims`);
+  const answerRef = ref(db, `rooms/${roomId}/answer`);
 
   const waitingMessage = document.getElementById("waiting-message");
   const countdownEl = document.getElementById("countdown");
 
   if (waitingMessage) waitingMessage.classList.remove("hidden");
+
+  onValue(answerRef, snapshot => {
+    answer = snapshot.val();
+    log("📥 정답 로드 완료", answer);
+  });
 
   onValue(claimsRef, snapshot => {
     claims = snapshot.val();
