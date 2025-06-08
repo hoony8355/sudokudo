@@ -134,26 +134,52 @@ export function startGame(roomId, player) {
   currentRoomId = roomId;
   currentPlayer = player;
 
-  const status = document.getElementById("game-status");
-  if (status) {
-    status.textContent = "게임을 준비 중입니다...";
-    status.classList.remove("hidden");
-    setTimeout(() => status.classList.add("hidden"), 5000);
-  }
-
   const puzzleRef = ref(db, `rooms/${roomId}/puzzle`);
   const claimsRef = ref(db, `rooms/${roomId}/claims`);
+
+  const waitingMessage = document.getElementById("waiting-message");
+  const countdownEl = document.getElementById("countdown");
+
+  // 초기 상태: 상대 기다림
+  if (waitingMessage) {
+    waitingMessage.classList.remove("hidden");
+  }
+
+  // 상대방 입장 감지 시
+  onValue(claimsRef, snapshot => {
+    claims = snapshot.val();
+    log("📥 점령 현황 동기화 완료", claims);
+
+    if (claims && puzzle) {
+      // 상대방 들어왔을 경우 메시지 숨김 + 카운트 실행
+      if (waitingMessage) waitingMessage.classList.add("hidden");
+
+      // 단 한 번만 카운트다운 실행
+      if (countdownEl && !countdownEl.dataset.started) {
+        countdownEl.dataset.started = "true"; // 플래그 설정
+        countdownEl.classList.remove("hidden");
+
+        let count = 3;
+        countdownEl.textContent = count;
+        const interval = setInterval(() => {
+          count--;
+          if (count === 0) {
+            countdownEl.classList.add("hidden");
+            clearInterval(interval);
+          } else {
+            countdownEl.textContent = count;
+          }
+        }, 1000);
+      }
+
+      renderBoard(puzzle, claims);
+    }
+  });
 
   onValue(puzzleRef, snapshot => {
     puzzle = snapshot.val();
     log("📥 퍼즐 불러오기 완료", puzzle);
-    if (puzzle && claims) renderBoard(puzzle, claims);
-  });
-
-  onValue(claimsRef, snapshot => {
-    claims = snapshot.val();
-    log("📥 점령 현황 동기화 완료", claims);
-    if (puzzle && claims) renderBoard(puzzle, claims);
+    if (claims && puzzle) renderBoard(puzzle, claims);
   });
 
   setupInputListeners();
