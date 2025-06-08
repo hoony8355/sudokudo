@@ -96,3 +96,8 @@ header {
   margin-top: 1rem;
   cursor: pointer;
 }
+
+.hidden {
+  display: none !important;
+}
+
