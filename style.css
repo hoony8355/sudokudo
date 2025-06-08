@@ -65,19 +65,22 @@ header {
   cursor: default;
 }
 
+/* 기존 클래스 */
 .claimedA {
-  background-color: #b3d9ff;
-  color: #000;
+  background-color: #b3d9ff !important; /* 옅은 파랑 */
+  color: #000 !important;
 }
 
 .claimedB {
-  background-color: #ffd6d6;
-  color: #000;
+  background-color: #ffd6d6 !important; /* 옅은 빨강 */
+  color: #000 !important;
 }
 
+/* 선택된 셀 강조 (PC/모바일 모두 강조되도록) */
 .selected-cell {
-  outline: 3px solid #ff9800; /* 강조되는 주황색 */
+  outline: 3px solid #f90 !important; /* 주황 */
 }
+
 
 /* 숫자 버튼 */
 #number-input {
