@@ -1,3 +1,4 @@
+/* 전체 레이아웃 설정 */
 body {
   font-family: Arial, sans-serif;
   background-color: #f3f3f3;
@@ -7,7 +8,8 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  height: 100vh;
+  min-height: 100vh;
+  font-size: clamp(14px, 2vw, 18px);
 }
 
 header {
@@ -16,17 +18,19 @@ header {
   color: #fff;
   padding: 1rem;
   text-align: center;
+  font-size: 1.2em;
 }
 
 #scoreboard {
   margin-top: 1rem;
   display: flex;
   justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
   width: 100%;
 }
 
 .score {
-  font-size: 1rem;
   font-weight: bold;
 }
 
@@ -36,14 +40,15 @@ header {
   grid-template-rows: repeat(9, 1fr);
   gap: 1px;
   margin: 1rem auto;
-  width: 90vmin;
-  height: 90vmin;
+  width: min(90vmin, 500px);
+  height: min(90vmin, 500px);
+  background-color: #999;
 }
 
 .cell {
   background-color: #fff;
   border: 1px solid #ccc;
-  font-size: 1.2rem;
+  font-size: clamp(1rem, 4vw, 1.5rem);
   font-weight: bold;
   display: flex;
   align-items: center;
@@ -79,14 +84,17 @@ header {
   justify-content: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  width: 100%;
 }
 
 .num-btn {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
+  padding: 0.5rem;
+  font-size: clamp(1rem, 4vw, 1.2rem);
   cursor: pointer;
-  width: 20vw;
+  width: 18vw;
   max-width: 60px;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 #start-button,
@@ -95,9 +103,41 @@ header {
   font-size: 1rem;
   margin-top: 1rem;
   cursor: pointer;
+  width: 90%;
+  max-width: 300px;
 }
 
 .hidden {
   display: none !important;
 }
 
+/* 모바일 대응 */
+@media (max-width: 600px) {
+  header {
+    font-size: 1rem;
+    padding: 0.8rem;
+  }
+
+  #scoreboard {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .num-btn {
+    width: 22vw;
+    max-width: 50px;
+  }
+
+  #start-button,
+  #difficulty-button {
+    font-size: 0.95rem;
+  }
+}
+
+/* 태블릿 대응 */
+@media (max-width: 900px) {
+  #board {
+    width: 95vmin;
+    height: 95vmin;
+  }
+}
