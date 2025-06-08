@@ -1,8 +1,9 @@
-// sudoku-game.js (통합 버전)
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-import { getDatabase, ref, set, push, onValue, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+// sudoku-game.js
 
-// Firebase 설정
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+import { getDatabase, ref, onValue, set, push, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+
+// 🔧 Firebase 초기화
 const firebaseConfig = {
   apiKey: "AIzaSyCbgziR_rX4O9OkDBsJxTzNO3q486C_eH4",
   authDomain: "sudokudo-58475.firebaseapp.com",
@@ -16,45 +17,47 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// 스도쿠 생성기
+// 📌 전역 변수
+let puzzle = [];
+let solution = [];
+let boardState = [];
+let capturedCells = {};
+let selectedCell = null;
+let score = 0;
+let opponentScore = 0;
+const roomId = sessionStorage.getItem("roomId");
+const player = sessionStorage.getItem("player");
+
+// 🎲 퍼즐 생성기
 function generateSudoku() {
+  const baseBoard = Array.from({ length: 9 }, (_, i) => (i + 1));
   const board = Array.from({ length: 9 }, () => Array(9).fill(0));
-  function fillBoard(b) {
-    for (let row = 0; row < 9; row++) {
-      for (let col = 0; col < 9; col++) {
-        if (b[row][col] === 0) {
-          const numbers = shuffle([...Array(9).keys()].map(n => n + 1));
-          for (let num of numbers) {
-            if (isSafe(b, row, col, num)) {
-              b[row][col] = num;
-              if (fillBoard(b)) return true;
-              b[row][col] = 0;
-            }
-          }
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-  function isSafe(b, row, col, num) {
+  const isValid = (board, row, col, num) => {
     for (let i = 0; i < 9; i++) {
-      if (b[row][i] === num || b[i][col] === num ||
-          b[3*Math.floor(row/3)+Math.floor(i/3)][3*Math.floor(col/3)+i%3] === num) {
-        return false;
-      }
+      if (board[row][i] === num || board[i][col] === num) return false;
+      const boxRow = 3 * Math.floor(row / 3) + Math.floor(i / 3);
+      const boxCol = 3 * Math.floor(col / 3) + (i % 3);
+      if (board[boxRow][boxCol] === num) return false;
     }
     return true;
-  }
-  function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
+  };
+  const fill = (row = 0, col = 0) => {
+    if (row === 9) return true;
+    const nextRow = col === 8 ? row + 1 : row;
+    const nextCol = (col + 1) % 9;
+    const shuffled = baseBoard.sort(() => Math.random() - 0.5);
+    for (const num of shuffled) {
+      if (isValid(board, row, col, num)) {
+        board[row][col] = num;
+        if (fill(nextRow, nextCol)) return true;
+        board[row][col] = 0;
+      }
     }
-    return arr;
-  }
-  fillBoard(board);
-  const puzzle = board.map(row => row.slice());
+    return false;
+  };
+  fill();
+  const solution = board.map(row => [...row]);
+  let puzzle = board.map(row => [...row]);
   let blanks = 50;
   while (blanks > 0) {
     const r = Math.floor(Math.random() * 9);
@@ -64,151 +67,47 @@ function generateSudoku() {
       blanks--;
     }
   }
-  return { puzzle, solution: board };
+  return { puzzle, solution };
 }
 
-// 매치메이킹
-const createRoomBtn = document.getElementById("create-room-btn");
-const roomListContainer = document.getElementById("room-list");
-
-function generateRoomId() {
-  return Math.floor(10000 + Math.random() * 90000).toString();
-}
-
-function renderAvailableRooms(rooms) {
-  if (!roomListContainer) return;
-  roomListContainer.innerHTML = '';
-  Object.entries(rooms).forEach(([roomId, room]) => {
-    if (!room.inGame) {
-      const button = document.createElement('button');
-      button.textContent = `방 ${roomId} 입장하기`;
-      button.onclick = () => joinRoom(roomId);
-      roomListContainer.appendChild(button);
-    }
-  });
-}
-
-function joinRoom(roomId) {
-  const roomRef = ref(db, `rooms/${roomId}`);
-  onValue(roomRef, (snap) => {
-    const data = snap.val();
-    if (data && !data.playerB) {
-      set(ref(db, `rooms/${roomId}/playerB`), true);
-      set(ref(db, `rooms/${roomId}/inGame`), true);
-      sessionStorage.setItem("roomId", roomId);
-      sessionStorage.setItem("player", "B");
-      location.hash = '#game';
-    }
-  }, { onlyOnce: true });
-}
-
-createRoomBtn?.addEventListener("click", () => {
-  const roomId = generateRoomId();
-  const roomRef = ref(db, `rooms/${roomId}`);
-  set(roomRef, {
-    playerA: true,
-    inGame: false
-  }).then(() => {
-    sessionStorage.setItem("roomId", roomId);
-    sessionStorage.setItem("player", "A");
-    location.hash = '#game';
-  });
-});
-
-onValue(ref(db, 'rooms'), (snap) => {
-  const rooms = snap.val();
-  if (rooms) renderAvailableRooms(rooms);
-});
-
-// 게임 로직
-const roomId = sessionStorage.getItem("roomId");
-const player = sessionStorage.getItem("player");
-const boardContainer = document.getElementById("board");
-const scoreA = document.getElementById("scoreA");
-const scoreB = document.getElementById("scoreB");
-let boardState = [];
-let puzzle = [];
-let solution = [];
-let capturedCells = {};
-let selectedCell = null;
-let score = 0;
-let opponentScore = 0;
-
+// 🧩 보드 생성
 function renderBoard() {
-  boardContainer.innerHTML = '';
+  const boardContainer = document.getElementById("board");
+  boardContainer.innerHTML = "";
   for (let row = 0; row < 9; row++) {
     for (let col = 0; col < 9; col++) {
       const cell = document.createElement("div");
       cell.className = "cell";
       cell.dataset.row = row;
       cell.dataset.col = col;
-      const val = boardState[row][col];
-      cell.textContent = val !== 0 ? val : '';
-
       const key = `${row}-${col}`;
-      if (capturedCells[key] === player) {
-        cell.classList.add("captured-by-me");
-      } else if (capturedCells[key]) {
-        cell.classList.add("captured-by-other");
-      }
-
-      if (puzzle[row][col] === 0 && !capturedCells[key]) {
-        cell.addEventListener("click", () => {
+      if (boardState[row][col]) cell.textContent = boardState[row][col];
+      if (capturedCells[key] === player) cell.classList.add("captured-by-me");
+      else if (capturedCells[key]) cell.classList.add("captured-by-other");
+      cell.addEventListener("click", () => {
+        if (puzzle[row][col] === 0 && !capturedCells[key]) {
           selectedCell = { row, col };
-          document.querySelectorAll(".cell").forEach(c => c.classList.remove("selected"));
-          cell.classList.add("selected");
-          console.log(`📌 셀 선택됨: (${row}, ${col})`);
-        });
-      }
+          console.log("🔲 셀 선택:", selectedCell);
+        }
+      });
       boardContainer.appendChild(cell);
     }
   }
+  console.log("📦 보드 렌더링 완료");
 }
 
-function updateUI() {
-  scoreA.textContent = `나: ${score}칸`;
-  scoreB.textContent = `상대: ${opponentScore}칸`;
+function updateScoreboard() {
+  document.getElementById("scoreA").textContent = player === "A" ? `나: ${score}칸` : `상대: ${opponentScore}칸`;
+  document.getElementById("scoreB").textContent = player === "B" ? `나: ${score}칸` : `상대: ${opponentScore}칸`;
 }
 
-function setupBoard(p, s) {
-  puzzle = p;
-  solution = s;
-  boardState = JSON.parse(JSON.stringify(p));
-  capturedCells = {};
-  renderBoard();
-  updateUI();
-}
-
-function initGame() {
-  const gameRef = ref(db, `rooms/${roomId}`);
-  onValue(gameRef, (snap) => {
-    const data = snap.val();
-    if (data?.puzzle && data?.solution && puzzle.length === 0) {
-      setupBoard(data.puzzle, data.solution);
-    }
-    if (data?.captures) {
-      capturedCells = data.captures;
-      renderBoard();
-    }
-    if (data?.scores) {
-      score = data.scores[player] || 0;
-      opponentScore = data.scores[player === 'A' ? 'B' : 'A'] || 0;
-      updateUI();
-    }
-  });
-}
-
-initGame();
-
-document.addEventListener("keydown", (e) => {
-  if (!selectedCell || isNaN(parseInt(e.key))) return;
+function handleNumberInput(number) {
+  if (!selectedCell) return;
   const { row, col } = selectedCell;
-  const input = parseInt(e.key);
   const correct = solution[row][col];
   const key = `${row}-${col}`;
-
-  if (input === correct) {
-    boardState[row][col] = input;
+  if (number === correct && !capturedCells[key]) {
+    boardState[row][col] = number;
     capturedCells[key] = player;
     score++;
     update(ref(db, `rooms/${roomId}`), {
@@ -217,11 +116,100 @@ document.addEventListener("keydown", (e) => {
       [`scores/${player}`]: score
     });
     renderBoard();
+    console.log(`✅ 정답: ${number} at (${row},${col})`);
   } else {
     score = Math.max(0, score - 2);
-    update(ref(db, `rooms/${roomId}`), {
-      [`scores/${player}`]: score
-    });
+    update(ref(db, `rooms/${roomId}/scores/${player}`), score);
+    console.log(`❌ 오답: ${number} at (${row},${col})`);
   }
   selectedCell = null;
+  updateScoreboard();
+}
+
+function initGame() {
+  const gameContainer = document.getElementById("game-container");
+  gameContainer.classList.remove("hidden");
+  const roomRef = ref(db, `rooms/${roomId}`);
+  onValue(roomRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!puzzle.length && data?.puzzle && data?.solution) {
+      puzzle = data.puzzle;
+      solution = data.solution;
+      boardState = data.boardState || JSON.parse(JSON.stringify(puzzle));
+      console.log("📥 퍼즐 불러오기 완료");
+      renderBoard();
+    }
+    if (data?.captures) {
+      capturedCells = data.captures;
+      renderBoard();
+    }
+    if (data?.scores) {
+      score = data.scores[player] || 0;
+      opponentScore = data.scores[player === "A" ? "B" : "A"] || 0;
+      updateScoreboard();
+    }
+  });
+}
+
+// 🎮 대기방
+const createBtn = document.getElementById("create-room-btn");
+createBtn?.addEventListener("click", () => {
+  const id = Math.floor(10000 + Math.random() * 90000);
+  const { puzzle, solution } = generateSudoku();
+  const roomRef = ref(db, `rooms/${id}`);
+  set(roomRef, {
+    playerA: true,
+    inGame: false,
+    puzzle,
+    solution,
+    boardState: puzzle,
+    scores: { A: 0, B: 0 },
+    captures: {}
+  }).then(() => {
+    sessionStorage.setItem("roomId", id);
+    sessionStorage.setItem("player", "A");
+    location.reload();
+  });
 });
+
+const roomList = document.getElementById("room-list");
+onValue(ref(db, "rooms"), (snap) => {
+  const rooms = snap.val();
+  roomList.innerHTML = "";
+  Object.entries(rooms || {}).forEach(([id, room]) => {
+    if (!room.inGame) {
+      const btn = document.createElement("button");
+      btn.textContent = `방 ${id} 입장`;
+      btn.onclick = () => {
+        const roomRef = ref(db, `rooms/${id}`);
+        set(ref(db, `rooms/${id}/playerB`), true);
+        set(ref(db, `rooms/${id}/inGame`), true);
+        sessionStorage.setItem("roomId", id);
+        sessionStorage.setItem("player", "B");
+        location.reload();
+      };
+      roomList.appendChild(btn);
+    }
+  });
+  console.log("📡 대기 중인 방 목록 갱신");
+});
+
+// 🎯 숫자 입력 핸들링
+window.addEventListener("keydown", (e) => {
+  const num = parseInt(e.key);
+  if (!isNaN(num) && num >= 1 && num <= 9) {
+    handleNumberInput(num);
+  }
+});
+
+document.querySelectorAll(".num-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const num = parseInt(btn.textContent);
+    handleNumberInput(num);
+  });
+});
+
+// 🚀 게임 진입 시 초기화
+if (roomId && player) {
+  initGame();
+}
