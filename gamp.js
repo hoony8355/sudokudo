@@ -1,4 +1,3 @@
-// gamp.js
 import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 
 const db = getDatabase();
@@ -7,6 +6,7 @@ let puzzle = null;
 let claims = null;
 let currentPlayer = null;
 let currentRoomId = null;
+let selectedCell = null;
 
 function log(...args) {
   console.log("[Game]", ...args);
@@ -44,7 +44,16 @@ function renderBoard(puzzleData, claimData) {
       if (claim === "A") cell.classList.add("claimed-a");
       else if (claim === "B") cell.classList.add("claimed-b");
 
-      cell.onclick = () => handleCellClick(row, col);
+      cell.onclick = () => {
+        document.querySelectorAll(".cell").forEach(c => c.classList.remove("selected-cell"));
+        if (puzzle[row][col] === 0) {
+          selectedCell = { row, col };
+          cell.classList.add("selected-cell");
+        } else {
+          selectedCell = null;
+        }
+      };
+
       boardDiv.appendChild(cell);
     }
   }
@@ -52,24 +61,15 @@ function renderBoard(puzzleData, claimData) {
   log("📦 보드 렌더링 완료");
 }
 
-function handleCellClick(row, col) {
-  const selected = document.querySelector(".selected-number");
-  if (!selected) {
-    log("⚠️ 선택된 숫자가 없음");
-    return;
-  }
-  if (puzzle[row][col] !== 0) {
-    log("🚫 이미 채워진 칸 클릭됨", row, col);
-    return;
-  }
-  if (claims[row][col] !== "") {
-    log("🚫 이미 점령된 칸 클릭됨", row, col);
+function handleNumberInput(value) {
+  if (!selectedCell) {
+    log("⚠️ 셀 선택 없음");
     return;
   }
 
-  const value = parseInt(selected.textContent);
-  if (isNaN(value)) {
-    log("❓ 숫자 선택값 파싱 실패", selected.textContent);
+  const { row, col } = selectedCell;
+  if (puzzle[row][col] !== 0 || claims[row][col] !== "") {
+    log("🚫 채울 수 없는 칸", row, col);
     return;
   }
 
@@ -82,9 +82,11 @@ function handleCellClick(row, col) {
 
     set(puzzleRef, puzzle);
     set(claimsRef, claims);
-    log("✅ 값 입력 및 동기화", { row, col, value, player: currentPlayer });
+    log("✅ 입력 성공", { row, col, value, player: currentPlayer });
+
+    selectedCell = null;
   } else {
-    log("❌ 잘못된 입력값 (규칙 위반)", { row, col, value });
+    log("❌ 잘못된 수", { row, col, value });
   }
 }
 
@@ -105,20 +107,16 @@ function isValidMove(row, col, value) {
 function setupInputListeners() {
   document.querySelectorAll(".num-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll(".num-btn").forEach(b => b.classList.remove("selected-number"));
-      btn.classList.add("selected-number");
-      log("🔢 숫자 선택", btn.textContent);
+      const value = parseInt(btn.textContent);
+      if (!isNaN(value)) {
+        handleNumberInput(value);
+      }
     });
   });
 
   document.addEventListener("keydown", e => {
     if (e.key >= "1" && e.key <= "9") {
-      document.querySelectorAll(".num-btn").forEach(b => b.classList.remove("selected-number"));
-      const btn = [...document.querySelectorAll(".num-btn")].find(b => b.textContent === e.key);
-      if (btn) {
-        btn.classList.add("selected-number");
-        log("⌨️ 키보드 숫자 선택", e.key);
-      }
+      handleNumberInput(parseInt(e.key));
     }
   });
 }
@@ -127,6 +125,14 @@ export function startGame(roomId, player) {
   log("📁 gamp.js 로딩됨");
   currentRoomId = roomId;
   currentPlayer = player;
+
+  // 게임 준비 메시지
+  const status = document.getElementById("game-status");
+  if (status) {
+    status.textContent = "게임을 준비 중입니다...";
+    status.classList.remove("hidden");
+    setTimeout(() => status.classList.add("hidden"), 5000);
+  }
 
   const puzzleRef = ref(db, `rooms/${roomId}/puzzle`);
   const claimsRef = ref(db, `rooms/${roomId}/claims`);
