@@ -1,6 +1,7 @@
 // lovi.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
 import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { startGame } from "./gamp.js";
 
 // Firebase 초기화
 const firebaseConfig = {
@@ -92,7 +93,7 @@ function waitForOpponent() {
   });
 }
 
-// 카운트다운
+// 카운트다운 후 startGame 호출
 function startCountdown() {
   let count = 3;
   const h2 = document.createElement("h2");
@@ -105,7 +106,7 @@ function startCountdown() {
     if (count < 0) {
       clearInterval(timer);
       log("🚀 게임 시작");
-      window.dispatchEvent(new CustomEvent("startGame", { detail: { roomId, playerRole } }));
+      startGame(roomId, playerRole);
     }
   }, 1000);
 }
@@ -120,7 +121,6 @@ function enterGame() {
 // 초기화
 function init() {
   createBtn?.addEventListener("click", createRoom);
-
   onValue(ref(db, "rooms"), snapshot => {
     const rooms = snapshot.val();
     if (rooms) {
