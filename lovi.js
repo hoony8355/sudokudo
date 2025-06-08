@@ -1,33 +1,32 @@
-// lovi.js (리팩토링 + 퍼즐 자동 생성 포함)
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
 import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 import { startGame } from "./gamp.js";
-import { generateSudoku } from "./sudokuGenerator.js"; // 퍼즐 생성기
+import { generateSudoku } from "./sudokuGenerator.js";  // ✅ 퍼즐 생성기 추가
 
-// Firebase 설정
+// Firebase 초기화
 const firebaseConfig = {
   apiKey: "AIzaSyCbgziR_rX4O9OkDBsJxTzNO3q486C_eH4",
   authDomain: "sudokudo-58475.firebaseapp.com",
   databaseURL: "https://sudokudo-58475-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "sudokudo-58475",
-  storageBucket: "sudokudo-58475.appspot.com",
+  storageBucket: "sudokudo-58475.firebasestorage.app",
   messagingSenderId: "759625494323",
   appId: "1:759625494323:web:b9923311c2694e3f5d9846",
   measurementId: "G-5YCQ6KGK43"
 };
 
-// ✅ 이미 초기화된 앱이 있으면 재초기화하지 않도록 처리
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-
-// DOM 요소
+// DOM 요소 참조
 const createBtn = document.getElementById("create-room-btn");
 const roomList = document.getElementById("room-list");
 const lobbyContainer = document.getElementById("lobby-container");
 const gameContainer = document.getElementById("game-container");
+const waitingMessage = document.getElementById("waiting-message");
+const countdownEl = document.getElementById("countdown");
 
-// 유저 세션
+// 유저 세션 상태
 let roomId = null;
 let playerRole = null;
 
@@ -35,10 +34,12 @@ function log(...args) {
   console.log("[LOVI]", ...args);
 }
 
+// 방 ID 생성
 function generateRoomId() {
   return Math.floor(10000 + Math.random() * 90000).toString();
 }
 
+// 대기 중인 방 표시
 function renderRooms(rooms) {
   roomList.innerHTML = "";
   Object.entries(rooms).forEach(([id, room]) => {
@@ -51,28 +52,34 @@ function renderRooms(rooms) {
   });
 }
 
+// 방 입장 처리
 function joinRoom(id) {
   const roomRef = ref(db, `rooms/${id}`);
-  onValue(
-    roomRef,
-    snapshot => {
-      const room = snapshot.val();
-      if (room && !room.playerB) {
-        log("🔑 B 플레이어로 입장");
-        playerRole = "B";
-        roomId = id;
-        update(roomRef, { playerB: true, inGame: true });
-        enterGame();
-      }
-    },
-    { onlyOnce: true }
-  );
+  onValue(roomRef, snapshot => {
+    const room = snapshot.val();
+    if (room && !room.playerB) {
+      log("🔑 B 플레이어로 입장");
+      playerRole = "B";
+      roomId = id;
+      update(roomRef, { playerB: true, inGame: true });
+      enterGame();
+    }
+  }, { onlyOnce: true });
 }
 
+// 방 생성
 function createRoom() {
   const id = generateRoomId();
   const roomRef = ref(db, `rooms/${id}`);
-  set(roomRef, { playerA: true, inGame: false }).then(() => {
+  const { puzzle, answer } = generateSudoku();  // ✅ 퍼즐 생성
+
+  set(roomRef, {
+    playerA: true,
+    inGame: false,
+    puzzle,
+    answer,
+    claims: Array(9).fill(null).map(() => Array(9).fill(null))  // 기본 점령 상태
+  }).then(() => {
     log("🏠 방 생성 완료", id);
     playerRole = "A";
     roomId = id;
@@ -80,10 +87,13 @@ function createRoom() {
   });
 }
 
+// 상대 기다리기
 function waitForOpponent() {
   lobbyContainer.classList.add("hidden");
   gameContainer.classList.remove("hidden");
-  gameContainer.innerHTML = `<h2>상대를 기다리는 중...</h2>`;
+
+  waitingMessage.classList.remove("hidden");
+  countdownEl.classList.add("hidden");
 
   const roomRef = ref(db, `rooms/${roomId}`);
   onValue(roomRef, snapshot => {
@@ -95,38 +105,33 @@ function waitForOpponent() {
   });
 }
 
+// 카운트다운 후 게임 시작
 function startCountdown() {
   let count = 3;
-  const h2 = document.createElement("h2");
-  gameContainer.innerHTML = "";
-  gameContainer.appendChild(h2);
 
-  // 퍼즐 생성 (playerA만)
-  if (playerRole === "A") {
-    const { puzzle, answer } = generateSudoku();
-    set(ref(db, `rooms/${roomId}/puzzle`), puzzle);
-    set(ref(db, `rooms/${roomId}/answer`), answer);
-    const claims = Array.from({ length: 9 }, () => Array(9).fill(null));
-    set(ref(db, `rooms/${roomId}/claims`), claims);
-  }
+  waitingMessage.classList.add("hidden");
+  countdownEl.classList.remove("hidden");
 
   const timer = setInterval(() => {
-    h2.textContent = `${count}...`;
+    countdownEl.textContent = `${count}`;
     count--;
     if (count < 0) {
       clearInterval(timer);
+      countdownEl.classList.add("hidden");
       log("🚀 게임 시작");
       startGame(roomId, playerRole);
     }
   }, 1000);
 }
 
+// 입장 시 초기 설정
 function enterGame() {
   lobbyContainer.classList.add("hidden");
   gameContainer.classList.remove("hidden");
-  startCountdown();
+  waitForOpponent();
 }
 
+// 초기화
 function init() {
   createBtn?.addEventListener("click", createRoom);
   onValue(ref(db, "rooms"), snapshot => {
