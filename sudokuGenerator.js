@@ -53,7 +53,7 @@ function removeCells(board, count = 50) {
 }
 
 export function generateSudoku() {
-  const board = generateCompleteBoard();
-  const puzzle = removeCells(board, 50);
-  return { puzzle, answer: board };
+  const answer = generateCompleteBoard();
+  const puzzle = removeCells(answer, 50);
+  return { puzzle, answer };
 }
