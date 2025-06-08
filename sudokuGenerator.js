@@ -54,44 +54,6 @@ function removeCells(board, count = 50) {
 
 export function generateSudoku() {
   const board = generateCompleteBoard();
-  const puzzle = removeCells(board, 50); // 약 31개의 힌트를 남김 (easy level)
+  const puzzle = removeCells(board, 50);
   return { puzzle, answer: board };
-}
-
-export function showWaitingRoomUI(containerId = "waiting-room") {
-  const container = document.getElementById(containerId);
-  if (!container) {
-    const div = document.createElement("div");
-    div.id = containerId;
-    div.style.position = "absolute";
-    div.style.top = "0";
-    div.style.left = "0";
-    div.style.width = "100%";
-    div.style.height = "100%";
-    div.style.background = "rgba(0,0,0,0.6)";
-    div.style.display = "flex";
-    div.style.justifyContent = "center";
-    div.style.alignItems = "center";
-    div.style.zIndex = "1000";
-    div.style.color = "white";
-    div.style.fontSize = "1.5rem";
-    div.innerHTML = `<div>상대방을 기다리는 중...<br><span id="player-count">1/2</span></div>`;
-    document.body.appendChild(div);
-  } else {
-    container.style.display = "flex";
-  }
-}
-
-export function updatePlayerCount(count) {
-  const countSpan = document.getElementById("player-count");
-  if (countSpan) {
-    countSpan.textContent = `${count}/2`;
-  }
-}
-
-export function hideWaitingRoomUI(containerId = "waiting-room") {
-  const container = document.getElementById(containerId);
-  if (container) {
-    container.style.display = "none";
-  }
 }
