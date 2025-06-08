@@ -30,8 +30,7 @@ function renderBoard() {
       cell.dataset.col = col;
 
       const val = boardState[row][col];
-      if (val !== 0) cell.textContent = val;
-      else cell.textContent = "";
+      cell.textContent = val !== 0 ? val : "";
 
       const cellKey = `${row}-${col}`;
       if (capturedCells[cellKey] === player) {
@@ -43,7 +42,7 @@ function renderBoard() {
       cell.addEventListener("click", () => {
         if (puzzle[row][col] === 0 && !capturedCells[cellKey]) {
           selectedCell = { row, col };
-          log("Selected cell:", selectedCell);
+          log("셀 선택:", selectedCell);
         }
       });
 
@@ -54,7 +53,7 @@ function renderBoard() {
 }
 
 function updateCapturedCellsUI() {
-  for (let cell of document.querySelectorAll(".cell")) {
+  document.querySelectorAll(".cell").forEach(cell => {
     const row = cell.dataset.row;
     const col = cell.dataset.col;
     const key = `${row}-${col}`;
@@ -64,13 +63,13 @@ function updateCapturedCellsUI() {
     } else if (capturedCells[key]) {
       cell.classList.add("captured-by-other");
     }
-  }
+  });
   log("📡 점령 현황 UI 갱신");
 }
 
 function setupBoard(p) {
   puzzle = p;
-  boardState = JSON.parse(JSON.stringify(puzzle));
+  boardState = JSON.parse(JSON.stringify(puzzle.puzzle));
   capturedCells = {};
   renderBoard();
 }
@@ -80,6 +79,7 @@ function initGame() {
 
   onValue(gameRef, (snapshot) => {
     const data = snapshot.val();
+
     if (data?.puzzle && puzzle.length === 0) {
       setupBoard(data.puzzle);
       log(`✅ ${player}: 퍼즐 불러오기 완료`);
@@ -102,7 +102,7 @@ function initGame() {
 
     const { row, col } = selectedCell;
     const answer = parseInt(e.key);
-    const correct = generateSudoku.solution[puzzle.sudokuIndex][row][col];
+    const correct = puzzle.answer[row][col];
     const cellKey = `${row}-${col}`;
 
     if (answer === correct) {
