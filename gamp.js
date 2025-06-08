@@ -14,11 +14,16 @@ function log(...args) {
 
 function renderBoard(puzzleData, claimData) {
   if (!puzzleData || !claimData) {
-    console.warn("[Game] ⛔ 퍼즐 또는 점령 데이터가 null이라 렌더링 생략");
+    console.warn("[Game] ⛔ 퍼즐 또는 점령 데이터가 null이라 렌더링 생략", { puzzleData, claimData });
     return;
   }
 
   const boardDiv = document.getElementById("board");
+  if (!boardDiv) {
+    console.error("[Game] ❌ #board 요소가 존재하지 않음. HTML 구조 확인 필요");
+    return;
+  }
+
   boardDiv.innerHTML = "";
 
   for (let row = 0; row < 9; row++) {
@@ -31,7 +36,11 @@ function renderBoard(puzzleData, claimData) {
       const value = puzzleData[row][col];
       const claim = claimData[row][col];
 
-      if (value !== 0) cell.textContent = value;
+      if (value !== 0) {
+        cell.textContent = value;
+        cell.classList.add("fixed");
+      }
+
       if (claim === "A") cell.classList.add("claimed-a");
       else if (claim === "B") cell.classList.add("claimed-b");
 
@@ -45,10 +54,24 @@ function renderBoard(puzzleData, claimData) {
 
 function handleCellClick(row, col) {
   const selected = document.querySelector(".selected-number");
-  if (!selected || puzzle[row][col] !== 0 || claims[row][col] !== "") return;
+  if (!selected) {
+    log("⚠️ 선택된 숫자가 없음");
+    return;
+  }
+  if (puzzle[row][col] !== 0) {
+    log("🚫 이미 채워진 칸 클릭됨", row, col);
+    return;
+  }
+  if (claims[row][col] !== "") {
+    log("🚫 이미 점령된 칸 클릭됨", row, col);
+    return;
+  }
 
   const value = parseInt(selected.textContent);
-  if (isNaN(value)) return;
+  if (isNaN(value)) {
+    log("❓ 숫자 선택값 파싱 실패", selected.textContent);
+    return;
+  }
 
   if (isValidMove(row, col, value)) {
     puzzle[row][col] = value;
@@ -59,6 +82,9 @@ function handleCellClick(row, col) {
 
     set(puzzleRef, puzzle);
     set(claimsRef, claims);
+    log("✅ 값 입력 및 동기화", { row, col, value, player: currentPlayer });
+  } else {
+    log("❌ 잘못된 입력값 (규칙 위반)", { row, col, value });
   }
 }
 
@@ -81,6 +107,7 @@ function setupInputListeners() {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".num-btn").forEach(b => b.classList.remove("selected-number"));
       btn.classList.add("selected-number");
+      log("🔢 숫자 선택", btn.textContent);
     });
   });
 
@@ -88,7 +115,10 @@ function setupInputListeners() {
     if (e.key >= "1" && e.key <= "9") {
       document.querySelectorAll(".num-btn").forEach(b => b.classList.remove("selected-number"));
       const btn = [...document.querySelectorAll(".num-btn")].find(b => b.textContent === e.key);
-      if (btn) btn.classList.add("selected-number");
+      if (btn) {
+        btn.classList.add("selected-number");
+        log("⌨️ 키보드 숫자 선택", e.key);
+      }
     }
   });
 }
@@ -103,13 +133,13 @@ export function startGame(roomId, player) {
 
   onValue(puzzleRef, snapshot => {
     puzzle = snapshot.val();
-    log("📥 퍼즐 불러오기 완료");
+    log("📥 퍼즐 불러오기 완료", puzzle);
     if (puzzle && claims) renderBoard(puzzle, claims);
   });
 
   onValue(claimsRef, snapshot => {
     claims = snapshot.val();
-    log("📥 점령 현황 동기화 완료");
+    log("📥 점령 현황 동기화 완료", claims);
     if (puzzle && claims) renderBoard(puzzle, claims);
   });
 
