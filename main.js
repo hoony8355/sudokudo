@@ -1,6 +1,6 @@
 // main.js
 import { db } from './firebase-init.js';
-import { generateSudokuPuzzle } from './sudokuGenerator.js';
+import { generateSudoku } from './sudokuGenerator.js';
 
 let board = [];
 let solution = [];
@@ -54,7 +54,7 @@ function updateBoard(row, col, value) {
     value,
     player: playerId
   };
-  firebase.database().ref().update(updates);
+  db.ref().update(updates);
   console.log('📡 보드 업데이트 전송');
 }
 
@@ -73,9 +73,9 @@ function renderBoard() {
 function startGame(initPlayerId, initRoomId) {
   playerId = initPlayerId;
   roomId = initRoomId;
-  const { puzzle, solution: sol } = generateSudokuPuzzle('easy');
+  const { puzzle, answer } = generateSudoku();
   board = puzzle;
-  solution = sol;
+  solution = answer;
   generateEmptyBoard();
   renderBoard();
   console.log('🎮 게임 시작');
