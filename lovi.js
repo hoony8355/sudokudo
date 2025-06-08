@@ -1,21 +1,14 @@
 // lovi.js (리팩토링 + 퍼즐 자동 생성 포함)
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-import {
-  getDatabase,
-  ref,
-  onValue,
-  set,
-  update
-} from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 import { startGame } from "./gamp.js";
-import { generateSudoku } from "./sudokuGenerator.js";
+import { generateSudoku } from "./sudokuGenerator.js"; // 퍼즐 생성기
 
-// Firebase 초기화
+// Firebase 설정
 const firebaseConfig = {
   apiKey: "AIzaSyCbgziR_rX4O9OkDBsJxTzNO3q486C_eH4",
   authDomain: "sudokudo-58475.firebaseapp.com",
-  databaseURL:
-    "https://sudokudo-58475-default-rtdb.asia-southeast1.firebasedatabase.app",
+  databaseURL: "https://sudokudo-58475-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "sudokudo-58475",
   storageBucket: "sudokudo-58475.appspot.com",
   messagingSenderId: "759625494323",
@@ -23,8 +16,10 @@ const firebaseConfig = {
   measurementId: "G-5YCQ6KGK43"
 };
 
-const app = initializeApp(firebaseConfig);
+// ✅ 이미 초기화된 앱이 있으면 재초기화하지 않도록 처리
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const db = getDatabase(app);
+
 
 // DOM 요소
 const createBtn = document.getElementById("create-room-btn");
