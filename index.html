@@ -22,13 +22,18 @@
     </div>
   </div>
 
-  <!-- 🔸 게임 화면 -->
+  <!-- 🔸 게임 화면 (초기엔 숨김 처리) -->
   <div id="game-container" class="hidden">
+    <div id="waiting-message" class="hidden">상대를 기다리는 중입니다...</div>
+    <div id="countdown" class="hidden">3</div>
+    
     <div id="scoreboard">
       <div class="score" id="scoreA">나: 0칸</div>
       <div class="score" id="scoreB">상대: 0칸</div>
     </div>
+
     <div id="board"></div>
+
     <div id="number-input">
       <button class="num-btn">1</button>
       <button class="num-btn">2</button>
@@ -42,11 +47,9 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js" type="module"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js" type="module"></script>
-
-  <!-- 통합 JS 파일 -->
-  <script type="module" src="./sudoku-game.js" defer></script>
+  <!-- ✅ JS 파일 로드 순서 중요 -->
+  <script src="./firebase-init.js" type="module" defer></script>
+  <script src="./lovi.js" type="module" defer></script>
+  <script src="./gamp.js" type="module" defer></script>
 </body>
 </html>
