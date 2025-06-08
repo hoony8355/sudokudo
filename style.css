@@ -7,7 +7,6 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
   min-height: 100vh;
   font-size: clamp(14px, 2vw, 18px);
 }
@@ -21,6 +20,7 @@ header {
   font-size: 1.2em;
 }
 
+/* 스코어 보드 */
 #scoreboard {
   margin-top: 1rem;
   display: flex;
@@ -34,6 +34,7 @@ header {
   font-weight: bold;
 }
 
+/* 보드 영역 */
 #board {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
@@ -55,7 +56,7 @@ header {
   justify-content: center;
   user-select: none;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.3s, outline 0.2s;
 }
 
 .prefilled {
@@ -75,9 +76,10 @@ header {
 }
 
 .selected-cell {
-  outline: 3px solid #333;
+  outline: 3px solid #ff9800; /* 강조되는 주황색 */
 }
 
+/* 숫자 버튼 */
 #number-input {
   display: flex;
   flex-wrap: wrap;
@@ -97,6 +99,7 @@ header {
   min-height: 44px;
 }
 
+/* 일반 버튼 */
 #start-button,
 #difficulty-button {
   padding: 0.8rem 1.2rem;
@@ -107,6 +110,7 @@ header {
   max-width: 300px;
 }
 
+/* 숨김 처리 */
 .hidden {
   display: none !important;
 }
