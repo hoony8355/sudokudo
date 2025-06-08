@@ -1,27 +1,30 @@
-// gamp.js – 게임 본격 시작 이후 로직 담당
+// gamp.js - 게임 로직 전용 모듈
 
-import { db } from "./firebase-init.js";
+console.log("[Game] 📁 gamp.js 로딩됨");
+
 import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { database } from "./firebase-init.js";
 
-let roomId = sessionStorage.getItem("roomId");
-let player = sessionStorage.getItem("player");
+let currentRoomId = null;
+let playerRole = null;
 let puzzle = [];
-let boardState = [];
-let capturedCells = {};
-let score = 0;
-let opponentScore = 0;
+let claims = [];
 let selectedCell = null;
 
-const boardContainer = document.getElementById("board");
-const scoreA = document.getElementById("scoreA");
-const scoreB = document.getElementById("scoreB");
+// ✅ 보드 렌더링 함수
+function renderBoard(puzzleData, claimData) {
+  const board = document.getElementById("board");
+  const container = document.getElementById("game-container");
 
-function log(...args) {
-  console.log("[Game]", ...args);
-}
+  if (!board || !container) {
+    console.error("[Game] ❌ 보드 또는 게임 컨테이너가 없음");
+    return;
+  }
 
-function renderBoard() {
-  boardContainer.innerHTML = "";
+  container.classList.remove("hidden");
+  board.classList.remove("hidden");
+  board.innerHTML = "";
+
   for (let row = 0; row < 9; row++) {
     for (let col = 0; col < 9; col++) {
       const cell = document.createElement("div");
@@ -29,106 +32,102 @@ function renderBoard() {
       cell.dataset.row = row;
       cell.dataset.col = col;
 
-      const val = boardState[row][col];
-      cell.textContent = val !== 0 ? val : "";
-
-      const cellKey = `${row}-${col}`;
-      if (capturedCells[cellKey] === player) {
-        cell.classList.add("captured-by-me");
-      } else if (capturedCells[cellKey]) {
-        cell.classList.add("captured-by-other");
+      const value = puzzleData[row][col];
+      if (value !== 0) {
+        cell.textContent = value;
+        cell.classList.add("prefilled");
       }
 
-      cell.addEventListener("click", () => {
-        if (puzzle[row][col] === 0 && !capturedCells[cellKey]) {
-          selectedCell = { row, col };
-          log("🔲 셀 선택:", selectedCell);
-        }
-      });
+      const claimed = claimData[row][col];
+      if (claimed === "A") cell.classList.add("claimedA");
+      if (claimed === "B") cell.classList.add("claimedB");
 
-      boardContainer.appendChild(cell);
+      board.appendChild(cell);
     }
   }
-  log("📦 보드 렌더링 완료");
+
+  console.log("[Game] 📦 보드 렌더링 완료");
 }
 
-function updateScoreUI() {
-  scoreA.textContent = `나: ${player === "A" ? score : opponentScore}칸`;
-  scoreB.textContent = `상대: ${player === "B" ? score : opponentScore}칸`;
+// ✅ 셀 선택 핸들러
+function handleCellClick(e) {
+  const cell = e.target;
+  if (!cell.classList.contains("cell") || cell.classList.contains("prefilled")) return;
+
+  document.querySelectorAll(".cell").forEach(c => c.classList.remove("selected-cell"));
+  cell.classList.add("selected-cell");
+
+  selectedCell = {
+    row: parseInt(cell.dataset.row),
+    col: parseInt(cell.dataset.col),
+  };
+
+  console.log("[Game] 🔲 셀 선택:", selectedCell);
 }
 
-function handleInput(num) {
-  if (!selectedCell) return;
+// ✅ 숫자 입력 처리
+function handleNumberInput(num) {
+  if (!selectedCell || !currentRoomId || !playerRole) return;
+
   const { row, col } = selectedCell;
-  const correct = puzzle[row][col + 9 * row];
-  const cellKey = `${row}-${col}`;
+  if (puzzle[row][col] !== 0) return;
 
-  if (num === correct) {
-    boardState[row][col] = num;
-    capturedCells[cellKey] = player;
-    score++;
-    log(`✅ 정답: ${num} at (${row},${col})`);
-    update(ref(db, `rooms/${roomId}`), {
-      [`boardState`]: boardState,
-      [`captures`]: capturedCells,
-      [`scores/${player}`]: score,
-    });
-    renderBoard();
+  const correctValue = puzzle[row][col];
+  if (parseInt(num) === correctValue) {
+    const updateRef = ref(database, `rooms/${currentRoomId}/claims/${row}/${col}`);
+    update(updateRef, playerRole)
+      .then(() => {
+        console.log(`[Game] ✅ 정답: ${num} at (${row},${col})`);
+        selectedCell = null;
+      })
+      .catch(err => console.error("[Game] ❌ Firebase 업데이트 실패:", err));
   } else {
-    log(`❌ 오답: ${num} at (${row},${col})`);
-    score = Math.max(0, score - 2);
-    update(ref(db, `rooms/${roomId}/scores`), {
-      [player]: score
-    });
+    console.log(`[Game] ❌ 오답: ${num} at (${row},${col})`);
   }
-  updateScoreUI();
-  selectedCell = null;
 }
 
+// ✅ 키보드 입력 처리
+function setupKeyboardInput() {
+  document.addEventListener("keydown", e => {
+    if (e.key >= "1" && e.key <= "9") handleNumberInput(e.key);
+  });
+}
+
+// ✅ 숫자 버튼 클릭 처리
 function setupNumberButtons() {
-  const buttons = document.querySelectorAll(".num-btn");
-  buttons.forEach((btn) => {
+  document.querySelectorAll(".num-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      const num = parseInt(btn.textContent);
-      handleInput(num);
+      handleNumberInput(btn.textContent);
     });
   });
-  document.addEventListener("keydown", (e) => {
-    const num = parseInt(e.key);
-    if (!isNaN(num) && num >= 1 && num <= 9) {
-      handleInput(num);
-    }
-  });
-  log("🧩 숫자 입력 시스템 초기화 완료");
 }
 
-function listenGameState() {
-  const gameRef = ref(db, `rooms/${roomId}`);
-  onValue(gameRef, (snapshot) => {
-    const data = snapshot.val();
-    if (!data) return;
+// ✅ 게임 초기화
+function startGame(roomId, role) {
+  currentRoomId = roomId;
+  playerRole = role;
 
-    if (data.puzzle) {
-      puzzle = data.puzzle;
-      boardState = JSON.parse(JSON.stringify(puzzle));
-      renderBoard();
-    }
-    if (data.captures) {
-      capturedCells = data.captures;
-      renderBoard();
-    }
-    if (data.scores) {
-      score = data.scores[player] || 0;
-      opponentScore = data.scores[player === "A" ? "B" : "A"] || 0;
-      updateScoreUI();
-    }
+  const puzzleRef = ref(database, `rooms/${roomId}/puzzle`);
+  const claimsRef = ref(database, `rooms/${roomId}/claims`);
+
+  onValue(puzzleRef, snapshot => {
+    puzzle = snapshot.val();
+    console.log("[Game] 📥 퍼즐 불러오기 완료");
+    renderBoard(puzzle, claims);
   });
-}
 
-function startGame() {
-  log("🚀 게임 본격 시작!");
-  listenGameState();
+  onValue(claimsRef, snapshot => {
+    claims = snapshot.val();
+    console.log("[Game] 📥 점령 현황 동기화 완료");
+    renderBoard(puzzle, claims);
+  });
+
+  document.getElementById("board")?.addEventListener("click", handleCellClick);
+  setupKeyboardInput();
   setupNumberButtons();
+
+  console.log("[Game] 🚀 게임 본격 시작!");
 }
 
-window.addEventListener("startGame", startGame);
+// ✅ 외부에서 호출하도록 export
+export { startGame };
