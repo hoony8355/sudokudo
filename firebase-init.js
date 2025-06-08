@@ -3,11 +3,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebas
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 
-// Firebase 설정
+// ✅ Firebase 설정 (리전 포함된 databaseURL 사용)
 const firebaseConfig = {
   apiKey: "AIzaSyCbgziR_rX4O9OkDBsJxTzNO3q486C_eH4",
   authDomain: "sudokudo-58475.firebaseapp.com",
-  databaseURL: "https://sudokudo-58475-default-rtdb.asia-southeast1.firebasedatabase.app",  // 리전 반영된 정확한 주소
+  databaseURL: "https://sudokudo-58475-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "sudokudo-58475",
   storageBucket: "sudokudo-58475.firebasestorage.app",
   messagingSenderId: "759625494323",
@@ -15,10 +15,10 @@ const firebaseConfig = {
   measurementId: "G-5YCQ6KGK43"
 };
 
-// Firebase 초기화
+// ✅ Firebase 초기화
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
-const db = getDatabase(app);
+const database = getDatabase(app);  // ✅ 이름 명확히 지정
 
-// 필요한 것들 export
-export { db, analytics };
+// ✅ export: 다른 모듈에서 import 가능
+export { database, analytics };
