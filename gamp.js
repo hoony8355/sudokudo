@@ -41,12 +41,12 @@ function renderBoard(puzzleData, claimData) {
         cell.classList.add("fixed");
       }
 
-      if (claim === "A") cell.classList.add("claimed-a");
-      else if (claim === "B") cell.classList.add("claimed-b");
+      if (claim === "A") cell.classList.add("claimedA");
+      else if (claim === "B") cell.classList.add("claimedB");
 
       cell.onclick = () => {
         document.querySelectorAll(".cell").forEach(c => c.classList.remove("selected-cell"));
-        if (puzzle[row][col] === 0) {
+        if (puzzle[row][col] === 0 && claimData[row][col] === "") {
           selectedCell = { row, col };
           cell.classList.add("selected-cell");
         } else {
@@ -82,8 +82,16 @@ function handleNumberInput(value) {
 
     set(puzzleRef, puzzle);
     set(claimsRef, claims);
-    log("✅ 입력 성공", { row, col, value, player: currentPlayer });
 
+    const cellEl = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+    if (cellEl) {
+      cellEl.textContent = value;
+      if (currentPlayer === "A") cellEl.classList.add("claimedA");
+      if (currentPlayer === "B") cellEl.classList.add("claimedB");
+      cellEl.classList.remove("selected-cell");
+    }
+
+    log("✅ 입력 성공", { row, col, value, player: currentPlayer });
     selectedCell = null;
   } else {
     log("❌ 잘못된 수", { row, col, value });
@@ -126,7 +134,6 @@ export function startGame(roomId, player) {
   currentRoomId = roomId;
   currentPlayer = player;
 
-  // 게임 준비 메시지
   const status = document.getElementById("game-status");
   if (status) {
     status.textContent = "게임을 준비 중입니다...";
