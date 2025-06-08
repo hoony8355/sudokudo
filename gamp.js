@@ -1,3 +1,4 @@
+// gamp.js
 import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 
 const db = getDatabase();
@@ -73,29 +74,30 @@ function handleNumberInput(value) {
     return;
   }
 
-  if (isValidMove(row, col, value)) {
-    puzzle[row][col] = value;
-    claims[row][col] = currentPlayer;
-
-    const puzzleRef = ref(db, `rooms/${currentRoomId}/puzzle`);
-    const claimsRef = ref(db, `rooms/${currentRoomId}/claims`);
-
-    set(puzzleRef, puzzle);
-    set(claimsRef, claims);
-
-    const cellEl = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
-    if (cellEl) {
-      cellEl.textContent = value;
-      if (currentPlayer === "A") cellEl.classList.add("claimedA");
-      if (currentPlayer === "B") cellEl.classList.add("claimedB");
-      cellEl.classList.remove("selected-cell");
-    }
-
-    log("✅ 입력 성공", { row, col, value, player: currentPlayer });
-    selectedCell = null;
-  } else {
+  if (!isValidMove(row, col, value)) {
     log("❌ 잘못된 수", { row, col, value });
+    return;
   }
+
+  puzzle[row][col] = value;
+  claims[row][col] = currentPlayer;
+
+  const puzzleRef = ref(db, `rooms/${currentRoomId}/puzzle`);
+  const claimsRef = ref(db, `rooms/${currentRoomId}/claims`);
+
+  set(puzzleRef, puzzle);
+  set(claimsRef, claims);
+
+  const cellEl = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+  if (cellEl) {
+    cellEl.textContent = value;
+    cellEl.classList.remove("selected-cell");
+    if (currentPlayer === "A") cellEl.classList.add("claimedA");
+    if (currentPlayer === "B") cellEl.classList.add("claimedB");
+  }
+
+  log("✅ 입력 성공", { row, col, value, player: currentPlayer });
+  selectedCell = null;
 }
 
 function isValidMove(row, col, value) {
@@ -116,9 +118,7 @@ function setupInputListeners() {
   document.querySelectorAll(".num-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const value = parseInt(btn.textContent);
-      if (!isNaN(value)) {
-        handleNumberInput(value);
-      }
+      if (!isNaN(value)) handleNumberInput(value);
     });
   });
 
@@ -140,23 +140,17 @@ export function startGame(roomId, player) {
   const waitingMessage = document.getElementById("waiting-message");
   const countdownEl = document.getElementById("countdown");
 
-  // 초기 상태: 상대 기다림
-  if (waitingMessage) {
-    waitingMessage.classList.remove("hidden");
-  }
+  if (waitingMessage) waitingMessage.classList.remove("hidden");
 
-  // 상대방 입장 감지 시
   onValue(claimsRef, snapshot => {
     claims = snapshot.val();
     log("📥 점령 현황 동기화 완료", claims);
 
     if (claims && puzzle) {
-      // 상대방 들어왔을 경우 메시지 숨김 + 카운트 실행
       if (waitingMessage) waitingMessage.classList.add("hidden");
 
-      // 단 한 번만 카운트다운 실행
       if (countdownEl && !countdownEl.dataset.started) {
-        countdownEl.dataset.started = "true"; // 플래그 설정
+        countdownEl.dataset.started = "true";
         countdownEl.classList.remove("hidden");
 
         let count = 3;
