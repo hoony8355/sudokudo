@@ -42,11 +42,11 @@
     </div>
   </div>
 
-  <!-- 🔻 스크립트 로딩 순서: 의존도 낮은 것 → 높은 것 -->
-  <script type="module" src="./firebase-init.js"></script>
-  <script type="module" src="./sudokuGenerator.js"></script>
-  <script type="module" src="./matchmaking.js"></script>
-  <script type="module" src="./game.js"></script>
-  <script type="module" src="./main.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js" type="module"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js" type="module"></script>
+
+  <!-- 통합 JS 파일 -->
+  <script type="module" src="./sudoku-game.js" defer></script>
 </body>
 </html>
