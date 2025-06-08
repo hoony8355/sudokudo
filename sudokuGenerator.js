@@ -38,7 +38,7 @@ function generateCompleteBoard() {
   return board;
 }
 
-function removeCells(board, count = 50) {
+function removeCells(board, count = 30) {
   const puzzle = board.map(row => row.slice());
   let removed = 0;
   while (removed < count) {
