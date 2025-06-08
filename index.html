@@ -22,7 +22,7 @@
     </div>
   </div>
 
-  <!-- 🔸 게임 화면 (초기엔 숨김 처리) -->
+  <!-- 🔸 게임 화면 -->
   <div id="game-container" class="hidden">
     <div id="scoreboard">
       <div class="score" id="scoreA">나: 0칸</div>
@@ -42,9 +42,11 @@
     </div>
   </div>
 
-<script src="main.js" type="module" defer></script>
-<script src="sudokuGenerator.js" type="module" defer></script>
-<script src="matchmaking.js" type="module" defer></script>
-<script src="game.js" type="module" defer></script>
+  <!-- 🔻 스크립트 로딩 순서: 의존도 낮은 것 → 높은 것 -->
+  <script type="module" src="./firebase-init.js"></script>
+  <script type="module" src="./sudokuGenerator.js"></script>
+  <script type="module" src="./matchmaking.js"></script>
+  <script type="module" src="./game.js"></script>
+  <script type="module" src="./main.js"></script>
 </body>
 </html>
