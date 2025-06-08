@@ -23,6 +23,8 @@ const createBtn = document.getElementById("create-room-btn");
 const roomList = document.getElementById("room-list");
 const lobbyContainer = document.getElementById("lobby-container");
 const gameContainer = document.getElementById("game-container");
+const waitingMessage = document.getElementById("waiting-message");
+const countdownEl = document.getElementById("countdown");
 
 // 유저 세션 상태
 let roomId = null;
@@ -81,7 +83,10 @@ function createRoom() {
 function waitForOpponent() {
   lobbyContainer.classList.add("hidden");
   gameContainer.classList.remove("hidden");
-  gameContainer.innerHTML = `<h2>상대를 기다리는 중...</h2>`;
+
+  // ✅ 요소 보이기 처리만
+  waitingMessage.classList.remove("hidden");
+  countdownEl.classList.add("hidden");
 
   const roomRef = ref(db, `rooms/${roomId}`);
   onValue(roomRef, snapshot => {
@@ -93,18 +98,19 @@ function waitForOpponent() {
   });
 }
 
-// 카운트다운 후 startGame 호출
+// 카운트다운 후 게임 시작
 function startCountdown() {
   let count = 3;
-  const h2 = document.createElement("h2");
-  gameContainer.innerHTML = "";
-  gameContainer.appendChild(h2);
+
+  waitingMessage.classList.add("hidden");
+  countdownEl.classList.remove("hidden");
 
   const timer = setInterval(() => {
-    h2.textContent = `${count}...`;
+    countdownEl.textContent = `${count}`;
     count--;
     if (count < 0) {
       clearInterval(timer);
+      countdownEl.classList.add("hidden");
       log("🚀 게임 시작");
       startGame(roomId, playerRole);
     }
@@ -115,7 +121,7 @@ function startCountdown() {
 function enterGame() {
   lobbyContainer.classList.add("hidden");
   gameContainer.classList.remove("hidden");
-  startCountdown();
+  waitForOpponent();
 }
 
 // 초기화
