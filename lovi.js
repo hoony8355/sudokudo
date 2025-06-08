@@ -1,3 +1,4 @@
+// lovi.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
 import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 import { startGame } from "./gamp.js";
@@ -73,12 +74,14 @@ function createRoom() {
   const roomRef = ref(db, `rooms/${id}`);
   const { puzzle, answer } = generateSudoku();  // ✅ 퍼즐 생성
 
+  const emptyClaims = Array.from({ length: 9 }, () => Array(9).fill("")); // ✅ 점령 초기화
+
   set(roomRef, {
     playerA: true,
     inGame: false,
     puzzle,
     answer,
-    claims: Array(9).fill(null).map(() => Array(9).fill(null))  // 기본 점령 상태
+    claims: emptyClaims
   }).then(() => {
     log("🏠 방 생성 완료", id);
     playerRole = "A";
