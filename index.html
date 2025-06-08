@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>스도쿠 점령전</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
@@ -18,22 +18,29 @@
     </div>
     <div id="room-list-section">
       <h2>참여 가능한 방</h2>
-      <ul id="room-list"></ul>
+      <div id="room-list"></div>
     </div>
   </div>
 
-  <!-- 🔸 게임 화면 (초기엔 숨김 처리) -->
+  <!-- 🔸 게임 화면 -->
   <div id="game-container" class="hidden">
+    <!-- ✅ 상태 메시지 (게임 시작 전 등) -->
+    <div id="game-status" class="hidden"></div>
+    
+    <!-- ⏱️ 대기 및 카운트다운 -->
     <div id="waiting-message" class="hidden">상대를 기다리는 중입니다...</div>
     <div id="countdown" class="hidden">3</div>
-    
+
+    <!-- 🏁 점수판 -->
     <div id="scoreboard">
       <div class="score" id="scoreA">나: 0칸</div>
       <div class="score" id="scoreB">상대: 0칸</div>
     </div>
 
+    <!-- 🧩 스도쿠 보드 -->
     <div id="board"></div>
 
+    <!-- 🔢 숫자 입력 -->
     <div id="number-input">
       <button class="num-btn">1</button>
       <button class="num-btn">2</button>
