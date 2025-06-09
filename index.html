@@ -39,9 +39,17 @@
 
     <!-- 🏁 점수판 -->
     <div id="scoreboard">
-      <div class="score" id="scoreA">나: 0칸</div>
-      <div class="score" id="scoreB">상대: 0칸</div>
-    </div>
+  <div class="score" id="scoreA">
+    <span class="nickname" id="nicknameA">나(?)</span>
+    <span class="rating" id="ratingA">(레이팅: ?)</span>
+    <div>점령: <span id="countA">0칸</span></div>
+  </div>
+  <div class="score" id="scoreB">
+    <span class="nickname" id="nicknameB">상대(?)</span>
+    <span class="rating" id="ratingB">(레이팅: ?)</span>
+    <div>점령: <span id="countB">0칸</span></div>
+  </div>
+</div>
 
     <!-- 🧩 스도쿠 보드 -->
     <div id="board"></div>
