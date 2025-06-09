@@ -1,5 +1,6 @@
 // gamp.js
 import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { handlePlayerJoin } from "./join-handler.js"; // 맨 위에 추가
 
 const db = getDatabase();
 
@@ -107,6 +108,9 @@ export function startGame(roomId, player) {
   log("📁 gamp.js 로딩됨");
   currentRoomId = roomId;
   currentPlayer = player;
+
+    // ✅ 자동 참가 처리 및 상대 이탈 감시 시작
+  handlePlayerJoin(roomId);  // << 이 줄 추가
 
   const puzzleRef = ref(db, `rooms/${roomId}/puzzle`);
   const claimsRef = ref(db, `rooms/${roomId}/claims`);
