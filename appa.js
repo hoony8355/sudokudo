@@ -43,8 +43,23 @@ function updateScore(claims) {
 }
 
 function updateRatingDisplay(room) {
-  const playerAInfo = document.getElementById("playerA-info");
-  const playerBInfo = document.getElementById("playerB-info");
+  const nicknameA = document.getElementById("nicknameA");
+const ratingA = document.getElementById("ratingA");
+const nicknameB = document.getElementById("nicknameB");
+const ratingB = document.getElementById("ratingB");
+
+get(userARef).then((snap) => {
+  const data = snap.val();
+  if (nicknameA) nicknameA.textContent = `나(${data?.nickname || "?"})`;
+  if (ratingA) ratingA.textContent = `(레이팅: ${data?.rating ?? "?"})`;
+});
+
+get(userBRef).then((snap) => {
+  const data = snap.val();
+  if (nicknameB) nicknameB.textContent = `상대(${data?.nickname || "?"})`;
+  if (ratingB) ratingB.textContent = `(레이팅: ${data?.rating ?? "?"})`;
+});
+
   const uid = auth.currentUser?.uid;
 
   const userARef = ref(db, `users/${room.playerAId}`);
