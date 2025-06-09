@@ -1,83 +1,89 @@
-// ✅ 외부 개선용 JS - sudoku-enhancer.js
+// appa.js
 import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 
 const db = getDatabase();
 
-let puzzle = null;
-let claims = null;
 let currentRoomId = null;
 
 function log(...args) {
-  console.log("[Enhancer]", ...args);
+  console.log("[APPA]", ...args);
 }
 
-function calculateScore(claimsData) {
-  let scoreA = 0;
-  let scoreB = 0;
-
+function countClaims(claims) {
+  let countA = 0,
+    countB = 0;
   for (let row = 0; row < 9; row++) {
     for (let col = 0; col < 9; col++) {
-      if (claimsData[row][col] === "A") scoreA++;
-      else if (claimsData[row][col] === "B") scoreB++;
+      if (claims[row][col] === "A") countA++;
+      if (claims[row][col] === "B") countB++;
     }
   }
-
-  document.getElementById("scoreA").textContent = `나: ${scoreA}칸`;
-  document.getElementById("scoreB").textContent = `상대: ${scoreB}칸`;
+  return { countA, countB };
 }
 
-function generateNewPuzzlePreservingClaims(claimsData) {
+function updateScoreboard(claims) {
+  const { countA, countB } = countClaims(claims);
+  const scoreAEl = document.getElementById("scoreA");
+  const scoreBEl = document.getElementById("scoreB");
+  if (scoreAEl) scoreAEl.textContent = `나: ${countA}칸`;
+  if (scoreBEl) scoreBEl.textContent = `상대: ${countB}칸`;
+}
+
+function isBoardFull(puzzle) {
+  return puzzle.flat().every((v) => v !== 0);
+}
+
+function regeneratePuzzle(puzzle, claims, answer) {
   const newPuzzle = [];
   for (let row = 0; row < 9; row++) {
-    const rowData = [];
+    const newRow = [];
     for (let col = 0; col < 9; col++) {
-      // 기존 점령된 칸은 새 퍼즐에서도 채워진 숫자로 유지 (빈칸 금지)
-      if (claimsData[row][col] !== "") {
-        rowData.push(Math.floor(Math.random() * 9) + 1); // 1~9 난수
+      if (claims[row][col] === "A" || claims[row][col] === "B") {
+        newRow.push(answer[row][col]);
       } else {
-        rowData.push(0); // 빈칸
+        newRow.push(0);
       }
     }
-    newPuzzle.push(rowData);
+    newPuzzle.push(newRow);
   }
   return newPuzzle;
 }
 
-function monitorBoardAndReplaceIfFilled(roomId) {
+export function initSudokuEnhancer(roomId) {
+  currentRoomId = roomId;
+
   const puzzleRef = ref(db, `rooms/${roomId}/puzzle`);
   const claimsRef = ref(db, `rooms/${roomId}/claims`);
   const answerRef = ref(db, `rooms/${roomId}/answer`);
 
-  onValue(puzzleRef, snapshot => {
-    puzzle = snapshot.val();
-    checkIfBoardIsFullAndReplace();
+  let currentPuzzle = null;
+  let currentClaims = null;
+  let currentAnswer = null;
+
+  onValue(puzzleRef, (snapshot) => {
+    currentPuzzle = snapshot.val();
+    checkAndRegenerate();
   });
 
-  onValue(claimsRef, snapshot => {
-    claims = snapshot.val();
-    calculateScore(claims);
-    checkIfBoardIsFullAndReplace();
+  onValue(claimsRef, (snapshot) => {
+    currentClaims = snapshot.val();
+    updateScoreboard(currentClaims);
+    checkAndRegenerate();
   });
 
-  currentRoomId = roomId;
+  onValue(answerRef, (snapshot) => {
+    currentAnswer = snapshot.val();
+  });
 
-  function checkIfBoardIsFullAndReplace() {
-    if (!puzzle || !claims) return;
-    const isFull = puzzle.every((row, i) => row.every((cell, j) => cell !== 0 || claims[i][j] !== ""));
-    if (isFull) {
-      const newPuzzle = generateNewPuzzlePreservingClaims(claims);
-      const newAnswer = JSON.parse(JSON.stringify(newPuzzle)); // 그대로 정답으로 처리 (예시)
-
+  function checkAndRegenerate() {
+    if (!currentPuzzle || !currentClaims || !currentAnswer) return;
+    if (isBoardFull(currentPuzzle)) {
+      log("📦 보드 가득 참 → 새로운 퍼즐 재생성");
+      const newPuzzle = regeneratePuzzle(currentPuzzle, currentClaims, currentAnswer);
       set(puzzleRef, newPuzzle);
-      set(answerRef, newAnswer);
-
-      log("🎉 퍼즐 다 채워짐, 새 퍼즐로 교체 완료");
     }
   }
 }
 
-// ✅ gamp/lovi 호출 후 실행
-window.initSudokuEnhancer = function (roomId) {
-  monitorBoardAndReplaceIfFilled(roomId);
-  log("🚀 외부 게임 강화 로직 적용됨", roomId);
-};
+// 전역 접근 허용
+window.initSudokuEnhancer = initSudokuEnhancer;
