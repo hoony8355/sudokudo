@@ -1,5 +1,5 @@
-// appa.js – 스코어 계산, 레이팅 처리 및 보드 재생성 개선 및 자기정보 선반영
-import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+// appa.js – 스코어 계산, 레이팅 처리 및 보드 재생성 개선 및 자기정보 선반영 + 랭킹 UI 렌더링
+import { getDatabase, ref, onValue, update, get, child } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
 
 const db = getDatabase();
@@ -7,6 +7,7 @@ const auth = getAuth();
 
 window.initSudokuEnhancer = function (roomId) {
   updateSelfRatingDisplay(); // ✅ 본인 정보 선반영
+  renderLeaderboard();       // ✅ 레이팅 기반 랭킹 표시
 
   const roomRef = ref(db, `rooms/${roomId}`);
   onValue(roomRef, (snapshot) => {
@@ -161,4 +162,45 @@ function regeneratePuzzleWithPreservedClaims(roomId, claims, answer) {
     answer: answer
   }).then(() => console.log("🆕 새 퍼즐 저장 완료"))
     .catch(err => console.error("퍼즐 저장 실패", err));
+}
+
+function renderLeaderboard() {
+  const usersRef = ref(db, "users");
+  get(usersRef).then(snap => {
+    const data = snap.val();
+    if (!data) return;
+
+    const users = Object.entries(data).map(([uid, val]) => ({
+      uid,
+      nickname: val.nickname || "?",
+      rating: val.rating || 1200
+    }));
+
+    users.sort((a, b) => b.rating - a.rating);
+
+    const currentUid = auth.currentUser?.uid;
+    const myRank = users.findIndex(u => u.uid === currentUid) + 1;
+    const myData = users.find(u => u.uid === currentUid);
+
+    document.getElementById("my-ranking").textContent = myData
+      ? `${myRank}위 - ${myData.nickname} (${myData.rating})`
+      : "로그인 후 확인 가능합니다.";
+
+    const top10El = document.getElementById("top-10-list");
+    const fullEl = document.getElementById("full-ranking-list");
+    top10El.innerHTML = "";
+    fullEl.innerHTML = "";
+
+    users.slice(0, 10).forEach((u, i) => {
+      const li = document.createElement("li");
+      li.textContent = `${i + 1}위 - ${u.nickname} (${u.rating})`;
+      top10El.appendChild(li);
+    });
+
+    users.slice(10, 100).forEach((u, i) => {
+      const li = document.createElement("li");
+      li.textContent = `${i + 11}위 - ${u.nickname} (${u.rating})`;
+      fullEl.appendChild(li);
+    });
+  });
 }
