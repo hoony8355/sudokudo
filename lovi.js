@@ -1,6 +1,6 @@
 // lovi.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { getDatabase, ref, onValue, set, update, get } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 import { startGame } from "./gamp.js";
 import { generateSudoku } from "./sudokuGenerator.js";
 
@@ -41,12 +41,21 @@ function generateRoomId() {
 
 function renderRooms(rooms) {
   roomList.innerHTML = "";
-  Object.entries(rooms).forEach(([id, room]) => {
-    if (!room.inGame && !room.playerB) {
-      const btn = document.createElement("button");
-      btn.textContent = `방 ${id} 입장하기`;
-      btn.onclick = () => joinRoom(id);
-      roomList.appendChild(btn);
+  Object.entries(rooms).forEach(async ([id, room]) => {
+    if (!room.inGame && !room.playerB && room.playerAId) {
+      try {
+        const userSnap = await get(ref(db, `users/${room.playerAId}`));
+        const user = userSnap.val();
+        const nickname = user?.nickname || "?";
+        const rating = user?.rating ?? "?";
+
+        const btn = document.createElement("button");
+        btn.innerHTML = `방 ${id} - <strong>${nickname}</strong> (레이팅: ${rating})`;
+        btn.onclick = () => joinRoom(id);
+        roomList.appendChild(btn);
+      } catch (err) {
+        console.error("❌ 사용자 정보 로딩 실패", err);
+      }
     }
   });
 }
@@ -75,12 +84,15 @@ function createRoom() {
   const { puzzle, answer } = generateSudoku();
   const emptyClaims = Array.from({ length: 9 }, () => Array(9).fill(""));
 
+  const uid = localStorage.getItem("uid");
+
   set(roomRef, {
     playerA: true,
     inGame: false,
     puzzle,
     answer,
-    claims: emptyClaims
+    claims: emptyClaims,
+    playerAId: uid || null
   }).then(() => {
     log("🏠 방 생성 완료", id);
     playerRole = "A";
