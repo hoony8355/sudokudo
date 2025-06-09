@@ -9,6 +9,12 @@
 <body>
   <header>
     <h1>스도쿠 점령전</h1>
+
+    <!-- 🔐 로그인 상태 표시 -->
+    <div id="auth-section">
+      <span id="user-info">사용자: ?</span>
+      <button onclick="loginWithGoogle()">Google 로그인</button>
+    </div>
   </header>
 
   <!-- 🔹 대기방 화면 -->
@@ -24,9 +30,9 @@
 
   <!-- 🔸 게임 화면 -->
   <div id="game-container" class="hidden">
-    <!-- ✅ 상태 메시지 (게임 시작 전 등) -->
+    <!-- ✅ 상태 메시지 -->
     <div id="game-status" class="hidden"></div>
-    
+
     <!-- ⏱️ 대기 및 카운트다운 -->
     <div id="waiting-message" class="hidden">상대를 기다리는 중입니다...</div>
     <div id="countdown" class="hidden" data-started="false">3</div>
@@ -53,6 +59,14 @@
       <button class="num-btn">9</button>
     </div>
   </div>
+
+  <!-- ✅ 로그인 사용자 정보 자동 업데이트 -->
+  <script>
+    setInterval(() => {
+      const name = window.currentUser?.displayName || "?";
+      document.getElementById("user-info").textContent = `사용자: ${name}`;
+    }, 1000);
+  </script>
 
   <!-- ✅ JS 파일 로드 순서 중요 -->
   <script src="./firebase-init.js" type="module" defer></script>
