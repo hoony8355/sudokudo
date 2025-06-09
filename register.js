@@ -1,4 +1,4 @@
-// register.js – 유저 닉네임 및 레이팅 초기 등록
+// register.js – 유저 닉네임 및 레이팅 초기 등록2
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
 import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 import { app } from "./firebase-init.js";
