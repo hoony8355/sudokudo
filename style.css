@@ -1,4 +1,4 @@
-/* 전체 레이아웃 설정 */
+/* 공통 레이아웃 */
 body {
   font-family: Arial, sans-serif;
   background-color: #f3f3f3;
@@ -20,7 +20,7 @@ header {
   font-size: 1.2em;
 }
 
-/* 스코어 보드 */
+/* 스코어보드 */
 #scoreboard {
   margin-top: 1rem;
   display: flex;
@@ -34,7 +34,7 @@ header {
   font-weight: bold;
 }
 
-/* 보드 영역 */
+/* 게임 보드 */
 #board {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
@@ -59,30 +59,36 @@ header {
   transition: background-color 0.3s, outline 0.2s;
 }
 
-.prefilled {
+/* 구역 경계선 */
+.border-top-bold {
+  border-top: 2px solid #444;
+}
+.border-left-bold {
+  border-left: 2px solid #444;
+}
+
+/* 셀 상태 스타일 */
+.fixed {
   background-color: #eee;
   color: #333;
   cursor: default;
 }
 
-/* 기존 클래스 */
 .claimedA {
-  background-color: #b3d9ff !important; /* 옅은 파랑 */
-  color: #000 !important;
+  background-color: #b3d9ff;
+  color: #000;
 }
 
 .claimedB {
-  background-color: #ffd6d6 !important; /* 옅은 빨강 */
-  color: #000 !important;
+  background-color: #ffd6d6;
+  color: #000;
 }
 
-/* 선택된 셀 강조 (PC/모바일 모두 강조되도록) */
 .selected-cell {
-  outline: 3px solid #f90 !important; /* 주황 */
+  outline: 3px solid #f90;
 }
 
-
-/* 숫자 버튼 */
+/* 숫자 입력 버튼 */
 #number-input {
   display: flex;
   flex-wrap: wrap;
@@ -113,12 +119,12 @@ header {
   max-width: 300px;
 }
 
-/* 숨김 처리 */
+/* 숨김 요소 */
 .hidden {
   display: none !important;
 }
 
-/* 모바일 대응 */
+/* 모바일 최적화 */
 @media (max-width: 600px) {
   header {
     font-size: 1rem;
