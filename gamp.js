@@ -30,6 +30,9 @@ function renderBoard(puzzleData, claimData) {
       cell.dataset.row = row;
       cell.dataset.col = col;
 
+      if (row % 3 === 0) cell.classList.add("border-top-bold");
+      if (col % 3 === 0) cell.classList.add("border-left-bold");
+
       const value = puzzleData[row][col];
       const claim = claimData[row][col];
 
@@ -126,22 +129,20 @@ export function startGame(roomId, player) {
     if (claims && puzzle) {
       if (waitingMessage) waitingMessage.classList.add("hidden");
 
-      if (!countdownStarted) {
+      if (!countdownStarted && countdownEl && countdownEl.textContent === "3") {
         countdownStarted = true;
-        if (countdownEl) {
-          countdownEl.classList.remove("hidden");
-          let count = 3;
-          countdownEl.textContent = count;
-          const interval = setInterval(() => {
-            count--;
-            if (count === 0) {
-              countdownEl.classList.add("hidden");
-              clearInterval(interval);
-            } else {
-              countdownEl.textContent = count;
-            }
-          }, 1000);
-        }
+        countdownEl.classList.remove("hidden");
+        let count = 3;
+        countdownEl.textContent = count;
+        const interval = setInterval(() => {
+          count--;
+          if (count === 0) {
+            countdownEl.classList.add("hidden");
+            clearInterval(interval);
+          } else {
+            countdownEl.textContent = count;
+          }
+        }, 1000);
       }
 
       renderBoard(puzzle, claims);
