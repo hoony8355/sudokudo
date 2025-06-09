@@ -1,87 +1,76 @@
-// appa.js - 스도쿠 게임 로직 확장
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
-import { generateSudoku } from "./sudokuGenerator.js";
+// appa.js – 스코어 계산 및 새 스도쿠 생성 시 색칠된 칸 보호 개선
+import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 
 const db = getDatabase();
 
-function log(...args) {
-  console.log("[Appa]", ...args);
-}
+window.initSudokuEnhancer = function (roomId) {
+  const roomRef = ref(db, `rooms/${roomId}`);
 
-function isBoardFull(puzzle) {
-  return puzzle.every(row => row.every(cell => cell !== 0));
-}
+  onValue(roomRef, (snapshot) => {
+    const room = snapshot.val();
+    if (!room) return;
 
-function countClaims(claims) {
-  let a = 0, b = 0;
-  for (let row of claims) {
-    for (let cell of row) {
-      if (cell === "A") a++;
-      else if (cell === "B") b++;
-    }
-  }
-  return { a, b };
-}
+    const { puzzle, claims, answer } = room;
 
-function generateNextPuzzleWithPreservedClaims(claims) {
-  let { puzzle, answer } = generateSudoku();
+    if (puzzle && claims) {
+      updateScore(claims);
 
-  // 보호해야 할 좌표 추출 (claim이 존재하는 칸은 빈칸이 되면 안 됨)
-  const protectedCells = [];
-  claims.forEach((row, rIdx) => {
-    row.forEach((claim, cIdx) => {
-      if (claim === "A" || claim === "B") {
-        protectedCells.push([rIdx, cIdx]);
+      const isBoardFilled = puzzle.flat().every((val, i) => val !== 0 || claims[Math.floor(i / 9)][i % 9] !== "");
+
+      if (isBoardFilled) {
+        console.log("✅ 보드 채워짐. 새 퍼즐 생성 시작");
+        regeneratePuzzleWithPreservedClaims(roomId, claims, answer);
       }
+    }
+  });
+};
+
+function updateScore(claims) {
+  let aCount = 0;
+  let bCount = 0;
+
+  claims.forEach((row) => {
+    row.forEach((cell) => {
+      if (cell === "A") aCount++;
+      else if (cell === "B") bCount++;
     });
   });
 
-  // 무작위로 50칸을 지우되, 보호 대상은 지우지 않음
-  const removable = [];
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      const isProtected = protectedCells.some(([pr, pc]) => pr === r && pc === c);
-      if (!isProtected) removable.push([r, c]);
-    }
-  }
-
-  // 셔플 후 50개 제거
-  for (let i = 0; i < 50 && i < removable.length; i++) {
-    const [r, c] = removable[i];
-    puzzle[r][c] = 0;
-  }
-
-  return { puzzle, answer };
+  const scoreA = document.getElementById("scoreA");
+  const scoreB = document.getElementById("scoreB");
+  if (scoreA) scoreA.textContent = `나: ${aCount}칸`;
+  if (scoreB) scoreB.textContent = `상대: ${bCount}칸`;
 }
 
-export function initSudokuEnhancer(roomId) {
-  const puzzleRef = ref(db, `rooms/${roomId}/puzzle`);
-  const claimsRef = ref(db, `rooms/${roomId}/claims`);
-  const answerRef = ref(db, `rooms/${roomId}/answer`);
+function regeneratePuzzleWithPreservedClaims(roomId, claims, answer) {
+  const newPuzzle = JSON.parse(JSON.stringify(answer));
+  const protectedCoords = [];
+  const removableCoords = [];
 
-  onValue(puzzleRef, snapshot => {
-    const puzzle = snapshot.val();
-    if (!puzzle) return;
-
-    if (isBoardFull(puzzle)) {
-      log("🟦 퍼즐 완료됨. 다음 퍼즐로 진행");
-
-      onValue(claimsRef, claimsSnap => {
-        const claims = claimsSnap.val();
-        const { puzzle: newPuzzle, answer: newAnswer } = generateNextPuzzleWithPreservedClaims(claims);
-
-        set(puzzleRef, newPuzzle);
-        set(answerRef, newAnswer);
-        // claims는 그대로 유지 (색 유지)
-
-        const scores = countClaims(claims);
-        document.getElementById("scoreA").textContent = `나: ${scores.a}칸`;
-        document.getElementById("scoreB").textContent = `상대: ${scores.b}칸`;
-
-        log("🔁 새 퍼즐 적용됨");
-      }, { onlyOnce: true });
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
+      if (claims[row][col] !== "") {
+        protectedCoords.push({ row, col });
+      } else {
+        removableCoords.push({ row, col });
+      }
     }
+  }
+
+  const shuffle = (array) => array.sort(() => Math.random() - 0.5);
+  const blanksToRemove = Math.min(30, removableCoords.length);
+  const shuffled = shuffle(removableCoords).slice(0, blanksToRemove);
+
+  shuffled.forEach(({ row, col }) => {
+    newPuzzle[row][col] = 0;
   });
-}
 
-window.initSudokuEnhancer = initSudokuEnhancer;
+  const updates = {
+    puzzle: newPuzzle,
+    answer: answer,
+  };
+
+  update(ref(db, `rooms/${roomId}`), updates)
+    .then(() => console.log("🆕 새 퍼즐 저장 완료"))
+    .catch((err) => console.error("퍼즐 저장 실패", err));
+}
