@@ -41,8 +41,12 @@ function generateRoomId() {
 
 async function renderRooms(rooms) {
   roomList.innerHTML = "";
-  for (const [id, room] of Object.entries(rooms)) {
+  Object.entries(rooms).forEach(async ([id, room]) => {
+    console.log("🧩 방 검사중:", id, room);
+
     if (!room.inGame && !room.playerB && room.playerAId) {
+      console.log("✅ 표시 조건 만족:", id);
+
       try {
         const userSnap = await get(ref(db, `users/${room.playerAId}`));
         const user = userSnap.val();
@@ -56,9 +60,16 @@ async function renderRooms(rooms) {
       } catch (err) {
         console.error("❌ 사용자 정보 로딩 실패", err);
       }
+    } else {
+      console.log("🚫 표시 조건 불충족:", id, {
+        inGame: room.inGame,
+        playerB: room.playerB,
+        playerAId: room.playerAId,
+      });
     }
-  }
+  });
 }
+
 
 function joinRoom(id) {
   const roomRef = ref(db, `rooms/${id}`);
