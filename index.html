@@ -13,7 +13,7 @@
     <!-- 🔐 로그인 상태 표시 -->
     <div id="auth-section">
       <span id="user-info">사용자: ?</span>
-      <button onclick="loginWithGoogle()">Google 로그인</button>
+      <button id="auth-button" onclick="loginWithGoogle()">Google 로그인</button>
     </div>
   </header>
 
@@ -67,28 +67,60 @@
       <button class="num-btn">9</button>
     </div>
 
-    <!-- 🎖️ 랭킹 리스트 (하단 추가) -->
-    <!-- 🏆 레이팅 랭킹 -->
-<section id="leaderboard" style="margin-top:2rem">
-  <h2>🏆 전체 랭킹</h2>
-  <div id="my-ranking" style="font-weight:bold; margin-bottom:1rem">내 순위: 확인 중...</div>
-  <ol id="top-10-list" style="margin-bottom:1rem"></ol>
-  <details>
-    <summary>▼ 나머지 순위 펼치기</summary>
-    <ol id="full-ranking-list"></ol>
-  </details>
-</section>
-
+    <!-- 🎖️ 랭킹 리스트 -->
+    <section id="leaderboard" style="margin-top:2rem">
+      <h2>🏆 전체 랭킹</h2>
+      <div id="my-ranking" style="font-weight:bold; margin-bottom:1rem">내 순위: 확인 중...</div>
+      <ol id="top-10-list" style="margin-bottom:1rem"></ol>
+      <details>
+        <summary>▼ 나머지 순위 펼치기</summary>
+        <ol id="full-ranking-list"></ol>
+      </details>
+    </section>
+  </div>
 
   <!-- ✅ 로그인 사용자 정보 자동 업데이트 -->
-  <script>
-    setInterval(() => {
-      const name = window.currentUser?.displayName || "?";
-      document.getElementById("user-info").textContent = `사용자: ${name}`;
-    }, 1000);
+  <script type="module">
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import { app } from "./firebase-init.js";
+    import { loadLeaderboard } from "./appa.js"; // ✅ leaderboard 바로 불러오기
+
+    const auth = getAuth(app);
+    const authButton = document.getElementById("auth-button");
+    const userInfo = document.getElementById("user-info");
+
+    // 로그인 상태 감지 → 버튼 전환 + 닉네임 업데이트
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        window.currentUser = user;
+        userInfo.textContent = `사용자: ${user.displayName || "?"}`;
+        authButton.textContent = "로그아웃";
+        authButton.onclick = logoutWithGoogle;
+      } else {
+        window.currentUser = null;
+        userInfo.textContent = "사용자: ?"
+        authButton.textContent = "Google 로그인";
+        authButton.onclick = loginWithGoogle;
+      }
+    });
+
+    function loginWithGoogle() {
+      import("./login.js").then(m => m.loginWithGoogle());
+    }
+
+    function logoutWithGoogle() {
+      signOut(auth).then(() => {
+        alert("로그아웃 되었습니다.");
+      });
+    }
+
+    // ✅ 사이트 진입 시 랭킹 바로 표시
+    window.addEventListener("DOMContentLoaded", () => {
+      loadLeaderboard();
+    });
   </script>
 
-  <!-- ✅ JS 파일 로드 순서 중요 -->
+  <!-- ✅ JS 파일 로드 -->
   <script src="./firebase-init.js" type="module" defer></script>
   <script src="./lovi.js" type="module" defer></script>
   <script src="./gamp.js" type="module" defer></script>
