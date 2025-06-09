@@ -154,3 +154,12 @@ header {
     height: 95vmin;
   }
 }
+
+.score .nickname {
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+.score .rating {
+  color: #666;
+  font-size: 0.9em;
+}
