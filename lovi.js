@@ -39,9 +39,9 @@ function generateRoomId() {
   return Math.floor(10000 + Math.random() * 90000).toString();
 }
 
-function renderRooms(rooms) {
+async function renderRooms(rooms) {
   roomList.innerHTML = "";
-  Object.entries(rooms).forEach(async ([id, room]) => {
+  for (const [id, room] of Object.entries(rooms)) {
     if (!room.inGame && !room.playerB && room.playerAId) {
       try {
         const userSnap = await get(ref(db, `users/${room.playerAId}`));
@@ -57,7 +57,7 @@ function renderRooms(rooms) {
         console.error("❌ 사용자 정보 로딩 실패", err);
       }
     }
-  });
+  }
 }
 
 function joinRoom(id) {
