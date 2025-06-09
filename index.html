@@ -39,17 +39,17 @@
 
     <!-- 🏁 점수판 -->
     <div id="scoreboard">
-  <div class="score" id="scoreA">
-    <span class="nickname" id="nicknameA">나(?)</span>
-    <span class="rating" id="ratingA">(레이팅: ?)</span>
-    <div>점령: <span id="countA">0칸</span></div>
-  </div>
-  <div class="score" id="scoreB">
-    <span class="nickname" id="nicknameB">상대(?)</span>
-    <span class="rating" id="ratingB">(레이팅: ?)</span>
-    <div>점령: <span id="countB">0칸</span></div>
-  </div>
-</div>
+      <div class="score" id="scoreA">
+        <span class="nickname" id="nicknameA">나(?)</span>
+        <span class="rating" id="ratingA">(레이팅: ?)</span>
+        <div>점령: <span id="countA">0칸</span></div>
+      </div>
+      <div class="score" id="scoreB">
+        <span class="nickname" id="nicknameB">상대(?)</span>
+        <span class="rating" id="ratingB">(레이팅: ?)</span>
+        <div>점령: <span id="countB">0칸</span></div>
+      </div>
+    </div>
 
     <!-- 🧩 스도쿠 보드 -->
     <div id="board"></div>
@@ -65,6 +65,20 @@
       <button class="num-btn">7</button>
       <button class="num-btn">8</button>
       <button class="num-btn">9</button>
+    </div>
+
+    <!-- 🎖️ 랭킹 리스트 (하단 추가) -->
+    <div id="rating-rankings" style="margin-top: 2rem;">
+      <h2>🎖️ 나의 순위</h2>
+      <div id="my-ranking">불러오는 중...</div>
+
+      <h3 style="margin-top: 1rem;">🏆 상위 10위</h3>
+      <ol id="top-10-list"></ol>
+
+      <details id="full-ranking" style="margin-top: 1rem;">
+        <summary>나머지 전체 랭킹 보기</summary>
+        <ol id="full-ranking-list"></ol>
+      </details>
     </div>
   </div>
 
