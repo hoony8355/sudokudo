@@ -1,89 +1,87 @@
-// appa.js
-import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+// appa.js - 스도쿠 게임 로직 확장
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { generateSudoku } from "./sudokuGenerator.js";
 
 const db = getDatabase();
 
-let currentRoomId = null;
-
 function log(...args) {
-  console.log("[APPA]", ...args);
-}
-
-function countClaims(claims) {
-  let countA = 0,
-    countB = 0;
-  for (let row = 0; row < 9; row++) {
-    for (let col = 0; col < 9; col++) {
-      if (claims[row][col] === "A") countA++;
-      if (claims[row][col] === "B") countB++;
-    }
-  }
-  return { countA, countB };
-}
-
-function updateScoreboard(claims) {
-  const { countA, countB } = countClaims(claims);
-  const scoreAEl = document.getElementById("scoreA");
-  const scoreBEl = document.getElementById("scoreB");
-  if (scoreAEl) scoreAEl.textContent = `나: ${countA}칸`;
-  if (scoreBEl) scoreBEl.textContent = `상대: ${countB}칸`;
+  console.log("[Appa]", ...args);
 }
 
 function isBoardFull(puzzle) {
-  return puzzle.flat().every((v) => v !== 0);
+  return puzzle.every(row => row.every(cell => cell !== 0));
 }
 
-function regeneratePuzzle(puzzle, claims, answer) {
-  const newPuzzle = [];
-  for (let row = 0; row < 9; row++) {
-    const newRow = [];
-    for (let col = 0; col < 9; col++) {
-      if (claims[row][col] === "A" || claims[row][col] === "B") {
-        newRow.push(answer[row][col]);
-      } else {
-        newRow.push(0);
-      }
+function countClaims(claims) {
+  let a = 0, b = 0;
+  for (let row of claims) {
+    for (let cell of row) {
+      if (cell === "A") a++;
+      else if (cell === "B") b++;
     }
-    newPuzzle.push(newRow);
   }
-  return newPuzzle;
+  return { a, b };
+}
+
+function generateNextPuzzleWithPreservedClaims(claims) {
+  let { puzzle, answer } = generateSudoku();
+
+  // 보호해야 할 좌표 추출 (claim이 존재하는 칸은 빈칸이 되면 안 됨)
+  const protectedCells = [];
+  claims.forEach((row, rIdx) => {
+    row.forEach((claim, cIdx) => {
+      if (claim === "A" || claim === "B") {
+        protectedCells.push([rIdx, cIdx]);
+      }
+    });
+  });
+
+  // 무작위로 50칸을 지우되, 보호 대상은 지우지 않음
+  const removable = [];
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const isProtected = protectedCells.some(([pr, pc]) => pr === r && pc === c);
+      if (!isProtected) removable.push([r, c]);
+    }
+  }
+
+  // 셔플 후 50개 제거
+  for (let i = 0; i < 50 && i < removable.length; i++) {
+    const [r, c] = removable[i];
+    puzzle[r][c] = 0;
+  }
+
+  return { puzzle, answer };
 }
 
 export function initSudokuEnhancer(roomId) {
-  currentRoomId = roomId;
-
   const puzzleRef = ref(db, `rooms/${roomId}/puzzle`);
   const claimsRef = ref(db, `rooms/${roomId}/claims`);
   const answerRef = ref(db, `rooms/${roomId}/answer`);
 
-  let currentPuzzle = null;
-  let currentClaims = null;
-  let currentAnswer = null;
+  onValue(puzzleRef, snapshot => {
+    const puzzle = snapshot.val();
+    if (!puzzle) return;
 
-  onValue(puzzleRef, (snapshot) => {
-    currentPuzzle = snapshot.val();
-    checkAndRegenerate();
-  });
+    if (isBoardFull(puzzle)) {
+      log("🟦 퍼즐 완료됨. 다음 퍼즐로 진행");
 
-  onValue(claimsRef, (snapshot) => {
-    currentClaims = snapshot.val();
-    updateScoreboard(currentClaims);
-    checkAndRegenerate();
-  });
+      onValue(claimsRef, claimsSnap => {
+        const claims = claimsSnap.val();
+        const { puzzle: newPuzzle, answer: newAnswer } = generateNextPuzzleWithPreservedClaims(claims);
 
-  onValue(answerRef, (snapshot) => {
-    currentAnswer = snapshot.val();
-  });
+        set(puzzleRef, newPuzzle);
+        set(answerRef, newAnswer);
+        // claims는 그대로 유지 (색 유지)
 
-  function checkAndRegenerate() {
-    if (!currentPuzzle || !currentClaims || !currentAnswer) return;
-    if (isBoardFull(currentPuzzle)) {
-      log("📦 보드 가득 참 → 새로운 퍼즐 재생성");
-      const newPuzzle = regeneratePuzzle(currentPuzzle, currentClaims, currentAnswer);
-      set(puzzleRef, newPuzzle);
+        const scores = countClaims(claims);
+        document.getElementById("scoreA").textContent = `나: ${scores.a}칸`;
+        document.getElementById("scoreB").textContent = `상대: ${scores.b}칸`;
+
+        log("🔁 새 퍼즐 적용됨");
+      }, { onlyOnce: true });
     }
-  }
+  });
 }
 
-// 전역 접근 허용
 window.initSudokuEnhancer = initSudokuEnhancer;
