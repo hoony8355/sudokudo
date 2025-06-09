@@ -1,43 +1,82 @@
-// register.js – 유저 닉네임 및 레이팅 초기 등록 개선
-import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+// register.js – 로그인/로그아웃 상태 처리 및 유저 등록
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+
+import {
+  getDatabase,
+  ref,
+  get,
+  set
+} from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+
 import { app } from "./firebase-init.js";
 
 const auth = getAuth(app);
 const db = getDatabase(app);
 
-// ✅ 공통 유저 등록 함수
-async function ensureUserData(uid, nickname = "익명") {
-  const userRef = ref(db, `users/${uid}`);
-  const snap = await get(userRef);
+// ✅ 로그인 처리
+async function loginWithGoogle() {
+  await setPersistence(auth, browserLocalPersistence);
+  const provider = new GoogleAuthProvider();
 
-  if (!snap.exists()) {
-    await set(userRef, {
-      nickname: nickname,
-      rating: 1200
-    });
-    console.log("✅ 유저 정보 신규 등록 완료", uid);
-  } else {
-    console.log("ℹ️ 유저 정보 이미 존재", uid);
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    const userRef = ref(db, `users/${user.uid}`);
+    const snapshot = await get(userRef);
+
+    if (!snapshot.exists()) {
+      await set(userRef, {
+        nickname: user.displayName || "익명",
+        rating: 1200
+      });
+      console.log("[register] ✅ 신규 유저 등록 완료");
+    } else {
+      console.log("[register] ℹ️ 유저 정보 이미 존재", user.uid);
+    }
+  } catch (err) {
+    console.error("❌ 로그인 실패", err);
   }
-
-  localStorage.setItem("uid", uid); // ✅ lovi.js에서 참조 가능하도록 저장
 }
 
-// ✅ 로그인 처리 및 유저 등록
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    const uid = user.uid;
-    await ensureUserData(uid, user.displayName || "익명");
-  } else {
-    console.log("🚪 로그아웃 상태 - 익명 로그인 시도");
+// ✅ 로그아웃 처리
+async function logoutWithGoogle() {
+  try {
+    await signOut(auth);
+    console.log("[register] 🔒 로그아웃 완료");
+  } catch (err) {
+    console.error("❌ 로그아웃 실패", err);
+  }
+}
 
-    try {
-      const result = await signInAnonymously(auth);
-      const uid = result.user.uid;
-      await ensureUserData(uid); // 로그인 후에도 유저 정보 등록
-    } catch (err) {
-      console.error("❌ 익명 로그인 실패", err);
-    }
+// ✅ 로그인 상태 변화 감지 및 UI 업데이트
+onAuthStateChanged(auth, async (user) => {
+  const authBtn = document.getElementById("auth-button");
+  const userInfo = document.getElementById("user-info");
+
+  if (user) {
+    // 로그인 상태
+    const name = user.displayName || "사용자";
+    userInfo.textContent = `사용자: ${name}`;
+    authBtn.textContent = "로그아웃";
+    authBtn.onclick = logoutWithGoogle;
+    window.currentUser = user;
+  } else {
+    // 로그아웃 상태
+    userInfo.textContent = `사용자: ?`;
+    authBtn.textContent = "Google 로그인";
+    authBtn.onclick = loginWithGoogle;
+    window.currentUser = null;
   }
 });
+
+// 🔁 전역 함수로 등록 (호출 필요 시 대비)
+window.loginWithGoogle = loginWithGoogle;
+window.logoutWithGoogle = logoutWithGoogle;
