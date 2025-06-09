@@ -110,19 +110,28 @@ function processRating(room, winner) {
     const aRating = aSnap.val()?.rating ?? 1200;
     const bRating = bSnap.val()?.rating ?? 1200;
 
-    let aNew = aRating, bNew = bRating;
+    const K = 32;
+
+    const EA = 1 / (1 + 10 ** ((bRating - aRating) / 400));
+    const EB = 1 / (1 + 10 ** ((aRating - bRating) / 400));
+
+    let SA = 0.5, SB = 0.5;
     if (winner === "A") {
-      aNew += 10;
-      bNew -= 10;
+      SA = 1;
+      SB = 0;
     } else if (winner === "B") {
-      aNew -= 10;
-      bNew += 10;
+      SA = 0;
+      SB = 1;
     }
+
+    const aNew = Math.round(aRating + K * (SA - EA));
+    const bNew = Math.round(bRating + K * (SB - EB));
 
     update(userARef, { rating: aNew });
     update(userBRef, { rating: bNew });
   });
 }
+
 
 function regeneratePuzzleWithPreservedClaims(roomId, claims, answer) {
   const newPuzzle = JSON.parse(JSON.stringify(answer));
