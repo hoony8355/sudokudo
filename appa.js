@@ -1,7 +1,9 @@
-// appa.js – 스코어 계산 및 보드 재생성 개선
-import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+// appa.js – 스코어 계산, 레이팅 처리 및 보드 재생성 개선
+import { getDatabase, ref, onValue, update, get, child } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
 
 const db = getDatabase();
+const auth = getAuth();
 
 window.initSudokuEnhancer = function (roomId) {
   const roomRef = ref(db, `rooms/${roomId}`);
@@ -14,7 +16,8 @@ window.initSudokuEnhancer = function (roomId) {
     if (!puzzle || !claims || !answer) return;
 
     updateScore(claims);
-    checkForGameEndAndDeclareWinner(claims);
+    updateRatingDisplay(room);
+    checkForGameEndAndDeclareWinner(claims, room);
 
     const isBoardFilled = puzzle.flat().every((val, i) => val !== 0 || claims[Math.floor(i / 9)][i % 9] !== "");
     if (isBoardFilled) {
@@ -26,7 +29,6 @@ window.initSudokuEnhancer = function (roomId) {
 
 function updateScore(claims) {
   let aCount = 0, bCount = 0;
-
   claims.forEach(row => {
     row.forEach(cell => {
       if (cell === "A") aCount++;
@@ -40,9 +42,26 @@ function updateScore(claims) {
   if (scoreB) scoreB.textContent = `상대: ${bCount}칸`;
 }
 
-function checkForGameEndAndDeclareWinner(claims) {
-  let aCount = 0, bCount = 0, filled = 0;
+function updateRatingDisplay(room) {
+  const playerAInfo = document.getElementById("playerA-info");
+  const playerBInfo = document.getElementById("playerB-info");
+  const uid = auth.currentUser?.uid;
 
+  const userARef = ref(db, `users/${room.playerAId}`);
+  const userBRef = ref(db, `users/${room.playerBId}`);
+
+  get(userARef).then((snap) => {
+    const data = snap.val();
+    playerAInfo.textContent = `나 (${data?.nickname || "?"}, 레이팅: ${data?.rating ?? "?"})`;
+  });
+  get(userBRef).then((snap) => {
+    const data = snap.val();
+    playerBInfo.textContent = `상대 (${data?.nickname || "?"}, 레이팅: ${data?.rating ?? "?"})`;
+  });
+}
+
+function checkForGameEndAndDeclareWinner(claims, room) {
+  let aCount = 0, bCount = 0, filled = 0;
   claims.forEach(row => {
     row.forEach(cell => {
       if (cell === "A") {
@@ -72,13 +91,42 @@ function checkForGameEndAndDeclareWinner(claims) {
       document.getElementById("scoreboard")?.after(el);
     }
     el.textContent = resultText;
+
+    // 레이팅 처리
+    const winner = aCount > bCount ? "A" : bCount > aCount ? "B" : "draw";
+    processRating(room, winner);
   }
+}
+
+function processRating(room, winner) {
+  const userAId = room.playerAId;
+  const userBId = room.playerBId;
+  if (!userAId || !userBId) return;
+
+  const userARef = ref(db, `users/${userAId}`);
+  const userBRef = ref(db, `users/${userBId}`);
+
+  Promise.all([get(userARef), get(userBRef)]).then(([aSnap, bSnap]) => {
+    const aRating = aSnap.val()?.rating ?? 1200;
+    const bRating = bSnap.val()?.rating ?? 1200;
+
+    let aNew = aRating, bNew = bRating;
+    if (winner === "A") {
+      aNew += 10;
+      bNew -= 10;
+    } else if (winner === "B") {
+      aNew -= 10;
+      bNew += 10;
+    }
+
+    update(userARef, { rating: aNew });
+    update(userBRef, { rating: bNew });
+  });
 }
 
 function regeneratePuzzleWithPreservedClaims(roomId, claims, answer) {
   const newPuzzle = JSON.parse(JSON.stringify(answer));
   const removable = [];
-
   for (let r = 0; r < 9; r++) {
     for (let c = 0; c < 9; c++) {
       if (claims[r][c] === "") removable.push({ r, c });
