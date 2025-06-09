@@ -29,6 +29,7 @@ const countdownEl = document.getElementById("countdown");
 
 let roomId = null;
 let playerRole = null;
+let countdownStarted = false;
 
 function log(...args) {
   console.log("[LOVI]", ...args);
@@ -94,12 +95,14 @@ function waitForOpponent() {
 
   waitingMessage.classList.remove("hidden");
   countdownEl.classList.add("hidden");
+  countdownStarted = false;
 
   const roomRef = ref(db, `rooms/${roomId}`);
   onValue(roomRef, snapshot => {
     const room = snapshot.val();
-    if (room?.playerB) {
+    if (room?.playerB && !countdownStarted) {
       log("👥 상대 입장 확인. 카운트다운 시작");
+      countdownStarted = true;
       startCountdown();
     }
   });
@@ -110,15 +113,17 @@ function startCountdown() {
 
   waitingMessage.classList.add("hidden");
   countdownEl.classList.remove("hidden");
+  countdownEl.textContent = `${count}`;
 
   const timer = setInterval(() => {
-    countdownEl.textContent = `${count}`;
     count--;
     if (count < 0) {
       clearInterval(timer);
       countdownEl.classList.add("hidden");
       log("🚀 게임 시작");
       startGame(roomId, playerRole);
+    } else {
+      countdownEl.textContent = `${count}`;
     }
   }, 1000);
 }
