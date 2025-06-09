@@ -142,22 +142,22 @@ export function startGame(roomId, player) {
     if (claims && puzzle) {
       if (waitingMessage) waitingMessage.classList.add("hidden");
 
-      if (countdownEl && !countdownEl.dataset.started) {
-        countdownEl.dataset.started = "true";
-        countdownEl.classList.remove("hidden");
+      if (countdownEl && countdownEl.dataset.started !== "true") {
+  countdownEl.dataset.started = "true";
+  countdownEl.classList.remove("hidden");
 
-        let count = 3;
-        countdownEl.textContent = count;
-        const interval = setInterval(() => {
-          count--;
-          if (count === 0) {
-            countdownEl.classList.add("hidden");
-            clearInterval(interval);
-          } else {
-            countdownEl.textContent = count;
-          }
-        }, 1000);
-      }
+  let count = 3;
+  countdownEl.textContent = count;
+  const interval = setInterval(() => {
+    count--;
+    if (count === 0) {
+      countdownEl.classList.add("hidden");
+      clearInterval(interval);
+    } else {
+      countdownEl.textContent = count;
+    }
+  }, 1000);
+}
 
       renderBoard(puzzle, claims);
     }
