@@ -68,19 +68,17 @@
     </div>
 
     <!-- 🎖️ 랭킹 리스트 (하단 추가) -->
-    <div id="rating-rankings" style="margin-top: 2rem;">
-      <h2>🎖️ 나의 순위</h2>
-      <div id="my-ranking">불러오는 중...</div>
+    <!-- 🏆 레이팅 랭킹 -->
+<section id="leaderboard" style="margin-top:2rem">
+  <h2>🏆 전체 랭킹</h2>
+  <div id="my-ranking" style="font-weight:bold; margin-bottom:1rem">내 순위: 확인 중...</div>
+  <ol id="top-10-list" style="margin-bottom:1rem"></ol>
+  <details>
+    <summary>▼ 나머지 순위 펼치기</summary>
+    <ol id="full-ranking-list"></ol>
+  </details>
+</section>
 
-      <h3 style="margin-top: 1rem;">🏆 상위 10위</h3>
-      <ol id="top-10-list"></ol>
-
-      <details id="full-ranking" style="margin-top: 1rem;">
-        <summary>나머지 전체 랭킹 보기</summary>
-        <ol id="full-ranking-list"></ol>
-      </details>
-    </div>
-  </div>
 
   <!-- ✅ 로그인 사용자 정보 자동 업데이트 -->
   <script>
