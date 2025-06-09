@@ -1,13 +1,14 @@
-// appa.js – 스코어 계산, 레이팅 처리 및 보드 재생성 개선
-import { getDatabase, ref, onValue, update, get, child } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+// appa.js – 스코어 계산, 레이팅 처리 및 보드 재생성 개선 및 자기정보 선반영
+import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
 
 const db = getDatabase();
 const auth = getAuth();
 
 window.initSudokuEnhancer = function (roomId) {
-  const roomRef = ref(db, `rooms/${roomId}`);
+  updateSelfRatingDisplay(); // ✅ 본인 정보 선반영
 
+  const roomRef = ref(db, `rooms/${roomId}`);
   onValue(roomRef, (snapshot) => {
     const room = snapshot.val();
     if (!room) return;
@@ -27,6 +28,20 @@ window.initSudokuEnhancer = function (roomId) {
   });
 };
 
+function updateSelfRatingDisplay() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+
+  const userRef = ref(db, `users/${uid}`);
+  get(userRef).then((snap) => {
+    const data = snap.val();
+    const nicknameA = document.getElementById("nicknameA");
+    const ratingA = document.getElementById("ratingA");
+    if (nicknameA) nicknameA.textContent = `나(${data?.nickname || "?"})`;
+    if (ratingA) ratingA.textContent = `(레이팅: ${data?.rating ?? "?"})`;
+  });
+}
+
 function updateScore(claims) {
   let aCount = 0, bCount = 0;
   claims.forEach(row => {
@@ -36,42 +51,21 @@ function updateScore(claims) {
     });
   });
 
-  const scoreA = document.getElementById("scoreA");
-  const scoreB = document.getElementById("scoreB");
-  if (scoreA) scoreA.textContent = `나: ${aCount}칸`;
-  if (scoreB) scoreB.textContent = `상대: ${bCount}칸`;
+  const countA = document.getElementById("countA");
+  const countB = document.getElementById("countB");
+  if (countA) countA.textContent = `${aCount}칸`;
+  if (countB) countB.textContent = `${bCount}칸`;
 }
 
 function updateRatingDisplay(room) {
-  const nicknameA = document.getElementById("nicknameA");
-const ratingA = document.getElementById("ratingA");
-const nicknameB = document.getElementById("nicknameB");
-const ratingB = document.getElementById("ratingB");
+  const nicknameB = document.getElementById("nicknameB");
+  const ratingB = document.getElementById("ratingB");
 
-get(userARef).then((snap) => {
-  const data = snap.val();
-  if (nicknameA) nicknameA.textContent = `나(${data?.nickname || "?"})`;
-  if (ratingA) ratingA.textContent = `(레이팅: ${data?.rating ?? "?"})`;
-});
-
-get(userBRef).then((snap) => {
-  const data = snap.val();
-  if (nicknameB) nicknameB.textContent = `상대(${data?.nickname || "?"})`;
-  if (ratingB) ratingB.textContent = `(레이팅: ${data?.rating ?? "?"})`;
-});
-
-  const uid = auth.currentUser?.uid;
-
-  const userARef = ref(db, `users/${room.playerAId}`);
   const userBRef = ref(db, `users/${room.playerBId}`);
-
-  get(userARef).then((snap) => {
-    const data = snap.val();
-    playerAInfo.textContent = `나 (${data?.nickname || "?"}, 레이팅: ${data?.rating ?? "?"})`;
-  });
   get(userBRef).then((snap) => {
     const data = snap.val();
-    playerBInfo.textContent = `상대 (${data?.nickname || "?"}, 레이팅: ${data?.rating ?? "?"})`;
+    if (nicknameB) nicknameB.textContent = `상대(${data?.nickname || "?"})`;
+    if (ratingB) ratingB.textContent = `(레이팅: ${data?.rating ?? "?"})`;
   });
 }
 
@@ -107,7 +101,6 @@ function checkForGameEndAndDeclareWinner(claims, room) {
     }
     el.textContent = resultText;
 
-    // 레이팅 처리
     const winner = aCount > bCount ? "A" : bCount > aCount ? "B" : "draw";
     processRating(room, winner);
   }
@@ -126,7 +119,6 @@ function processRating(room, winner) {
     const bRating = bSnap.val()?.rating ?? 1200;
 
     const K = 32;
-
     const EA = 1 / (1 + 10 ** ((bRating - aRating) / 400));
     const EB = 1 / (1 + 10 ** ((aRating - bRating) / 400));
 
@@ -146,7 +138,6 @@ function processRating(room, winner) {
     update(userBRef, { rating: bNew });
   });
 }
-
 
 function regeneratePuzzleWithPreservedClaims(roomId, claims, answer) {
   const newPuzzle = JSON.parse(JSON.stringify(answer));
