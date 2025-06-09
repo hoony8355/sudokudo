@@ -134,7 +134,8 @@ function startCountdown() {
       countdownEl.classList.add("hidden");
       log("🚀 게임 시작");
       startGame(roomId, playerRole);
-      window.initSudokuEnhancer(roomId); // ✅ 확장 기능 연결
+      console.log("✅ window.initSudokuEnhancer() 호출 직전");
+window.initSudokuEnhancer(roomId);; // ✅ 확장 기능 연결
     } else {
       countdownEl.textContent = `${count}`;
     }
