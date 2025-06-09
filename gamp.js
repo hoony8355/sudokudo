@@ -9,22 +9,17 @@ let claims = null;
 let currentPlayer = null;
 let currentRoomId = null;
 let selectedCell = null;
+let countdownStarted = false; // ✅ 중복 방지용 플래그
 
 function log(...args) {
   console.log("[Game]", ...args);
 }
 
 function renderBoard(puzzleData, claimData) {
-  if (!puzzleData || !claimData) {
-    console.warn("[Game] ⛔ 퍼즐 또는 점령 데이터가 null이라 렌더링 생략", { puzzleData, claimData });
-    return;
-  }
+  if (!puzzleData || !claimData) return;
 
   const boardDiv = document.getElementById("board");
-  if (!boardDiv) {
-    console.error("[Game] ❌ #board 요소가 존재하지 않음. HTML 구조 확인 필요");
-    return;
-  }
+  if (!boardDiv) return;
 
   boardDiv.innerHTML = "";
 
@@ -59,21 +54,13 @@ function renderBoard(puzzleData, claimData) {
       boardDiv.appendChild(cell);
     }
   }
-
-  log("📦 보드 렌더링 완료");
 }
 
 function handleNumberInput(value) {
-  if (!selectedCell) {
-    log("⚠️ 셀 선택 없음");
-    return;
-  }
+  if (!selectedCell) return;
 
   const { row, col } = selectedCell;
-  if (puzzle[row][col] !== 0 || claims[row][col] !== "") {
-    log("🚫 채울 수 없는 칸", row, col);
-    return;
-  }
+  if (puzzle[row][col] !== 0 || claims[row][col] !== "") return;
 
   if (answer && answer[row][col] !== value) {
     log("❌ 정답 아님", { row, col, value, expected: answer[row][col] });
@@ -93,12 +80,11 @@ function handleNumberInput(value) {
   if (cellEl) {
     cellEl.textContent = value;
     cellEl.classList.remove("selected-cell");
-    if (currentPlayer === "A") cellEl.classList.add("claimedA");
-    if (currentPlayer === "B") cellEl.classList.add("claimedB");
+    cellEl.classList.add(currentPlayer === "A" ? "claimedA" : "claimedB");
   }
 
-  log("✅ 입력 성공", { row, col, value, player: currentPlayer });
   selectedCell = null;
+  log("✅ 입력 성공", { row, col, value, player: currentPlayer });
 }
 
 function setupInputListeners() {
@@ -110,9 +96,7 @@ function setupInputListeners() {
   });
 
   document.addEventListener("keydown", e => {
-    if (e.key >= "1" && e.key <= "9") {
-      handleNumberInput(parseInt(e.key));
-    }
+    if (e.key >= "1" && e.key <= "9") handleNumberInput(parseInt(e.key));
   });
 }
 
@@ -142,22 +126,23 @@ export function startGame(roomId, player) {
     if (claims && puzzle) {
       if (waitingMessage) waitingMessage.classList.add("hidden");
 
-      if (countdownEl && countdownEl.dataset.started !== "true") {
-  countdownEl.dataset.started = "true";
-  countdownEl.classList.remove("hidden");
-
-  let count = 3;
-  countdownEl.textContent = count;
-  const interval = setInterval(() => {
-    count--;
-    if (count === 0) {
-      countdownEl.classList.add("hidden");
-      clearInterval(interval);
-    } else {
-      countdownEl.textContent = count;
-    }
-  }, 1000);
-}
+      if (!countdownStarted) {
+        countdownStarted = true;
+        if (countdownEl) {
+          countdownEl.classList.remove("hidden");
+          let count = 3;
+          countdownEl.textContent = count;
+          const interval = setInterval(() => {
+            count--;
+            if (count === 0) {
+              countdownEl.classList.add("hidden");
+              clearInterval(interval);
+            } else {
+              countdownEl.textContent = count;
+            }
+          }, 1000);
+        }
+      }
 
       renderBoard(puzzle, claims);
     }
